@@ -1,0 +1,31 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.d
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# Doxygen files
+doc/html
+doc/latex
+
+# CMake files
+CMakeFiles
+CMakeCache.txt
+cmake_install.cmake
+install_manifest.txt
+Testing
+DartConfiguration.tcl
+CTestTestfile.cmake
+Makefile
+
+# External projects
+external
