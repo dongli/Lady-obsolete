@@ -12,26 +12,6 @@ cmake_minimum_required (VERSION 2.8)
 project (lady CXX)
 
 # ------------------------------------------------------------------------------
-# source directory structure
-set (source_directories
-    "${PROJECT_SOURCE_DIR}/src"
-    "${PROJECT_SOURCE_DIR}/src/Advection"
-    "${PROJECT_SOURCE_DIR}/src/Advection/Tracer"
-)
-
-# ------------------------------------------------------------------------------
-# collect sources and headers
-foreach (dir ${source_directories})
-    include_directories ("${dir}")
-    # source files
-    aux_source_directory ("${dir}" tmp1)
-    list (APPEND sources ${tmp1})
-    # header files
-    file (GLOB tmp2 "${dir}/*.h")
-    list (APPEND headers ${tmp2})
-endforeach ()
-
-# ------------------------------------------------------------------------------
 # external libraries
 find_package (Armadillo)
 if (NOT ARMADILLO_FOUND)
@@ -48,26 +28,41 @@ if (NOT ARMADILLO_FOUND)
     endif ()
 endif ()
 
-include (ExternalProject)
-ExternalProject_Add (geomtk
-    GIT_REPOSITORY "https://github.com/dongli/GeoMTK"
-    GIT_TAG "master"
-    DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/external/packages/geomtk
-    UPDATE_COMMAND git pull
-    PREFIX ${PROJECT_SOURCE_DIR}/external/packages/geomtk
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/external
+add_subdirectory (${PROJECT_SOURCE_DIR}/external/geomtk)
+
+# ------------------------------------------------------------------------------
+# source directory structure
+set (source_directories
+    "${PROJECT_SOURCE_DIR}/src"
+    "${PROJECT_SOURCE_DIR}/src/Advection"
+    "${PROJECT_SOURCE_DIR}/src/Advection/Tracer"
+    "${PROJECT_SOURCE_DIR}/src/Advection/TestCase"
 )
-# set include and library directories
-include_directories ("${PROJECT_SOURCE_DIR}/external/include")
-link_directories ("${PROJECT_SOURCE_DIR}/external/lib")
+
+# ------------------------------------------------------------------------------
+# collect sources and headers
+foreach (dir ${source_directories})
+    include_directories ("${dir}")
+    # source files
+    aux_source_directory ("${dir}" tmp1)
+    list (APPEND sources ${tmp1})
+    # header files
+    file (GLOB tmp2 "${dir}/*.h")
+    list (APPEND headers ${tmp2})
+endforeach ()
 
 # ------------------------------------------------------------------------------
 # library targets
 add_library (lady STATIC ${sources})
 include_directories (
     ${ARMADILLO_INCLUDE_DIRS}
+    ${GEOMTK_INCLUDE_DIRS}
 )
-target_link_libraries (lady armadillo libgeomtk.a)
+link_directories (
+    ${GEOMTK_LIBRARY_DIRS}
+)
+target_link_libraries (lady armadillo)
+add_dependencies (lady geomtk)
 
 install (TARGETS lady
     ARCHIVE DESTINATION lib
@@ -93,7 +88,7 @@ foreach (dir ${source_directories})
         foreach (demo_path ${demo_paths})
             get_filename_component (demo ${demo_path} NAME_WE)
             add_executable (${demo} ${demo_path})
-            target_link_libraries (${demo} armadillo libgeomtk.a lady)
+            target_link_libraries (${demo} armadillo geomtk lady)
         endforeach ()
     endif ()
 endforeach ()

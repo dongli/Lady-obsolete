@@ -27,5 +27,5 @@ DartConfiguration.tcl
 CTestTestfile.cmake
 Makefile
 
-# External projects
-external
+*.nc
+*.pdf
