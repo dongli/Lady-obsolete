@@ -14,7 +14,9 @@ namespace lady {
 using std::cout;
 using std::endl;
 using std::setw;
+using std::setprecision;
 using std::string;
+using std::vector;
 
 using arma::vec;
 using arma::cube;
@@ -37,6 +39,7 @@ using geomtk::EDGE;
 #define LADY_MESH geomtk::RLLMesh
 #define LADY_MESH_INDEX geomtk::RLLMeshIndex
 #define LADY_VELOCITY_FIELD geomtk::RLLVelocityField
+#define LADY_TENSOR_FIELD geomtk::RLLTensorField
 #define LADY_REGRID geomtk::RLLRegrid
 
 }

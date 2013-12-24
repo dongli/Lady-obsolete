@@ -43,17 +43,17 @@ set (source_directories
 # collect sources and headers
 foreach (dir ${source_directories})
     include_directories ("${dir}")
-    # source files
-    aux_source_directory ("${dir}" tmp1)
-    list (APPEND sources ${tmp1})
     # header files
-    file (GLOB tmp2 "${dir}/*.h")
-    list (APPEND headers ${tmp2})
+    file (GLOB tmp1 "${dir}/*.h")
+    list (APPEND headers ${tmp1})
+    # source files
+    aux_source_directory ("${dir}" tmp2)
+    list (APPEND sources ${tmp2})
 endforeach ()
 
 # ------------------------------------------------------------------------------
 # library targets
-add_library (lady STATIC ${sources})
+add_library (lady STATIC ${headers} ${sources})
 include_directories (
     ${ARMADILLO_INCLUDE_DIRS}
     ${GEOMTK_INCLUDE_DIRS}
@@ -63,21 +63,6 @@ link_directories (
 )
 target_link_libraries (lady armadillo)
 add_dependencies (lady geomtk)
-
-install (TARGETS lady
-    ARCHIVE DESTINATION lib
-)
-foreach (header ${headers})
-	if (${header} MATCHES "lady.h")
-	    install (FILES ${header}
-	        DESTINATION "include"
-	    )
-	else ()
-		install (FILES ${header}
-	        DESTINATION "include/lady"
-	    )
-	endif ()
-endforeach ()
 
 # ------------------------------------------------------------------------------
 # executable targets
@@ -95,15 +80,17 @@ endforeach ()
 
 # ------------------------------------------------------------------------------
 # install rules
-install (TARGETS lady ARCHIVE DESTINATION lib)
-foreach (header ${headers})
-    if (${header} MATCHES "lady.h")
-        install (FILES ${header}
-            DESTINATION "include"
-        )
-    else ()
-        install (FILES ${header}
-            DESTINATION "include/lady"
-        )
-    endif ()
-endforeach ()
+if (${CMAKE_GENERATOR} MATCHES "Unix Makefiles")
+    install (TARGETS lady ARCHIVE DESTINATION lib)
+    foreach (header ${headers})
+        if (${header} MATCHES "lady.h")
+            install (FILES ${header}
+                DESTINATION "include"
+            )
+        else ()
+            install (FILES ${header}
+                DESTINATION "include/lady"
+            )
+        endif ()
+    endforeach ()
+endif ()

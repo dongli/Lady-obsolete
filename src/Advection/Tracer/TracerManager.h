@@ -6,26 +6,35 @@
 namespace lady {
 
 /**
- * TracerManager
- * This class stores the tracer objects and manages the input and output of them.
+ *  This class stores the tracer objects and manages the initialization,
+ *  registration and output.
  */
-
 class TracerManager {
     friend class AdvectionManager;
 protected:
     const LADY_DOMAIN *domain;
     LADY_LIST<Tracer*> tracers;
+    vector<string> tracerNames;
 public:
     TracerManager();
     virtual ~TracerManager();
 
     /**
-     * Initializer of tracer manager.
+     *  Initialize tracer manager.
+     *
+     *  @param domain    the space domain.
+     *  @param mesh      the mesh where flow is defined.
+     *  @param numParcel the number of parcels.
      */
     void init(const LADY_DOMAIN &domain, const LADY_MESH &mesh, int numParcel);
 
+    void registerTracer(const string &longName);
+    
     /**
-     * Output tracers on given time level into netCDF file.
+     *  Output tracers on given time level into netCDF file.
+     *
+     *  @param fileName  the output netCDF file name.
+     *  @param timeLevel the time level.
      */
     void output(const string &fileName, int timeLevel);
 };

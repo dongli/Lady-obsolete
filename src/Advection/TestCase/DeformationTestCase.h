@@ -14,7 +14,7 @@ public:
         COSINE_HILL, GAUSSIAN_HILL, SLOTTED_CYLINDERS
     };
 protected:
-    double T;
+    double period;
     SubCase subCase;
     InitCond initCond;
 public:

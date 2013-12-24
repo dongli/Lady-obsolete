@@ -5,12 +5,12 @@ namespace lady {
 DeformationTestCase::DeformationTestCase(SubCase subCase, InitCond initCond) {
     this->subCase = subCase;
     this->initCond = initCond;
-    T = 5.0;
-
+    period = 5.0;
+    // -------------------------------------------------------------------------
     // initialize domain
     domain = new geomtk::SphereDomain(2);
     domain->setRadius(1.0);
-    
+    // -------------------------------------------------------------------------
     // initialize mesh
     mesh = new geomtk::RLLMesh(*domain);
     int numLon = 360;
@@ -21,30 +21,41 @@ DeformationTestCase::DeformationTestCase(SubCase subCase, InitCond initCond) {
         halfLon[i] = i*dlon+dlon*0.5;
     }
     mesh->setGridCoords(0, numLon, fullLon, halfLon);
-    int numLat = 180;
+    int numLat = 181;
     double fullLat[numLat], halfLat[numLat-1];
-    double dlat = M_PI/(numLat-1);
-    for (int j = 0; j < numLat; ++j) {
-        fullLat[j] = j*dlat-M_PI_2;
+    // NOTE: Since the velocity interpolation within polar cap is inaccurate in
+    //       deformational flow, we set the second and last second latitude very
+    //       near to Poles by the parameter 'lat0' (distance from Poles).
+    double lat0 = 0.1*RAD;
+    double dlat = (M_PI-lat0*2)/(numLat-2-1);
+    for (int j = 1; j < numLat-1; ++j) {
+        fullLat[j] = (j-1)*dlat-M_PI_2+lat0;
     }
-    for (int j = 0; j < numLat-1; ++j) {
-        halfLat[j] = dlat*0.5+j*dlat-M_PI_2;
+    fullLat[0] = -M_PI_2;
+    fullLat[numLat-1] = M_PI_2;
+    for (int j = 1; j < numLat-2; ++j) {
+        halfLat[j] = dlat*0.5+(j-1)*dlat-M_PI_2+lat0;
     }
+    halfLat[0] = -M_PI_2+lat0*0.5;
+    halfLat[numLat-2] = M_PI_2-lat0*0.5;
     mesh->setGridCoords(1, numLat, fullLat, halfLat);
-
-    // initialize velocity
-    v = new LADY_VELOCITY_FIELD("v", "m s-1", "advection velocity",
+    // -------------------------------------------------------------------------
+    // initialize velocity and its gradient tensor
+    V = new LADY_VELOCITY_FIELD("v", "m s-1", "advection velocity",
                                 *mesh, HAS_HALF_LEVEL);
-    v->create(C_GRID);
-
-    REPORT_NOTICE("Deformation test case is online.");
+    V->create(C_GRID);
+    T = new LADY_TENSOR_FIELD("t", "s-1", "velocity gradient tensor",
+                              *mesh, HAS_HALF_LEVEL);
+    T->create();
+    // -------------------------------------------------------------------------
+    REPORT_ONLINE;
 }
 
 DeformationTestCase::~DeformationTestCase() {
     delete mesh;
     delete domain;
 
-    REPORT_NOTICE("Deformation test case is offline.");
+    REPORT_OFFLINE;
 }
 
 Time DeformationTestCase::getStartTime() const {
@@ -53,87 +64,117 @@ Time DeformationTestCase::getStartTime() const {
 }
 
 Time DeformationTestCase::getEndTime() const {
-    Time time = getStartTime()+1.0;
+    Time time = getStartTime()+period;
     return time;
 }
 
 double DeformationTestCase::getStepSize() const {
-    return 1.0/500.0;
+    return period/600.0;
 }
 
 void DeformationTestCase::advance(double time, int timeLevel) {
-
-    double cosT = cos(M_PI*time/T);
+    double cosT = cos(M_PI*time/period);
+    double k, R = domain->getRadius();
     // advance velocity
-    double k;
     if (subCase == CASE1) {
         k = 2.4;
-        for (int j = 0; j < mesh->getNumGrid(1, geomtk::CENTER); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, geomtk::EDGE); ++i) {
-                double lon = mesh->getGridCoord(0, geomtk::EDGE, i);
-                double lat = mesh->getGridCoord(1, geomtk::CENTER, j);
-                (*v)(0, 0, i, j) = k*pow(sin(lon*0.5), 2.0)*sin(lat*2.0)*cosT;
+        for (int j = 0; j < mesh->getNumGrid(1, CENTER); ++j) {
+            for (int i = 0; i < mesh->getNumGrid(0, EDGE); ++i) {
+                double lon = mesh->getGridCoord(0, EDGE, i);
+                double lat = mesh->getGridCoord(1, CENTER, j);
+                (*V)(timeLevel, 0, i, j) =
+                    k*pow(sin(lon*0.5), 2.0)*sin(lat*2.0)*cosT;
             }
         }
-        for (int j = 0; j < mesh->getNumGrid(1, geomtk::EDGE); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, geomtk::CENTER); ++i) {
-                double lon = mesh->getGridCoord(0, geomtk::CENTER, i);
-                double lat = mesh->getGridCoord(1, geomtk::EDGE, j);
-                (*v)(0, 1, i, j) = k*0.5*sin(lon)*cos(lat)*cosT;
+        for (int j = 0; j < mesh->getNumGrid(1, EDGE); ++j) {
+            for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
+                double lon = mesh->getGridCoord(0, CENTER, i);
+                double lat = mesh->getGridCoord(1, EDGE, j);
+                (*V)(timeLevel, 1, i, j) = k*0.5*sin(lon)*cos(lat)*cosT;
             }
         }
     } else if (subCase == CASE2) {
         k = 2.0;
-        for (int j = 0; j < mesh->getNumGrid(1, geomtk::CENTER); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, geomtk::EDGE); ++i) {
-                double lon = mesh->getGridCoord(0, geomtk::EDGE, i);
-                double lat = mesh->getGridCoord(1, geomtk::CENTER, j);
-                (*v)(0, 0, i, j) = k*pow(sin(lon), 2.0)*sin(lat*2.0)*cosT;
+        for (int j = 0; j < mesh->getNumGrid(1, CENTER); ++j) {
+            for (int i = 0; i < mesh->getNumGrid(0, EDGE); ++i) {
+                double lon = mesh->getGridCoord(0, EDGE, i);
+                double lat = mesh->getGridCoord(1, CENTER, j);
+                (*V)(timeLevel, 0, i, j) =
+                    k*pow(sin(lon), 2.0)*sin(lat*2.0)*cosT;
             }
         }
-        for (int j = 0; j < mesh->getNumGrid(1, geomtk::EDGE); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, geomtk::CENTER); ++i) {
-                double lon = mesh->getGridCoord(0, geomtk::CENTER, i);
-                double lat = mesh->getGridCoord(1, geomtk::EDGE, j);
-                (*v)(0, 1, i, j) = k*sin(lon*2.0)*cos(lat)*cosT;
+        for (int j = 0; j < mesh->getNumGrid(1, EDGE); ++j) {
+            for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
+                double lon = mesh->getGridCoord(0, CENTER, i);
+                double lat = mesh->getGridCoord(1, EDGE, j);
+                (*V)(timeLevel, 1, i, j) = k*sin(lon*2.0)*cos(lat)*cosT;
             }
         }
     } else if (subCase == CASE3) {
         k = 1.0;
-        for (int j = 0; j < mesh->getNumGrid(1, geomtk::CENTER); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, geomtk::EDGE); ++i) {
-                double lon = mesh->getGridCoord(0, geomtk::EDGE, i);
-                double lat = mesh->getGridCoord(1, geomtk::CENTER, j);
-                (*v)(0, 0, i, j) = -k*pow(sin(lon), 2.0)*sin(lat*2.0)*pow(cos(lat), 2.0)*cosT;
+        for (int j = 0; j < mesh->getNumGrid(1, CENTER); ++j) {
+            for (int i = 0; i < mesh->getNumGrid(0, EDGE); ++i) {
+                double lon = mesh->getGridCoord(0, EDGE, i);
+                double lat = mesh->getGridCoord(1, CENTER, j);
+                (*V)(timeLevel, 0, i, j) =
+                    -k*pow(sin(lon), 2.0)*sin(lat*2.0)*pow(cos(lat), 2.0)*cosT;
             }
         }
-        for (int j = 0; j < mesh->getNumGrid(1, geomtk::EDGE); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, geomtk::CENTER); ++i) {
-                double lon = mesh->getGridCoord(0, geomtk::CENTER, i);
-                double lat = mesh->getGridCoord(1, geomtk::EDGE, j);
-                (*v)(0, 1, i, j) = k*0.5*sin(lon)*pow(cos(lat), 3.0)*cosT;
+        for (int j = 0; j < mesh->getNumGrid(1, EDGE); ++j) {
+            for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
+                double lon = mesh->getGridCoord(0, CENTER, i);
+                double lat = mesh->getGridCoord(1, EDGE, j);
+                (*V)(timeLevel, 1, i, j) =
+                    k*0.5*sin(lon)*pow(cos(lat), 3.0)*cosT;
             }
         }
     } else if (subCase == CASE4) {
-        k = 10.0*domain->getRadius()/T;
-        double c1 = PI2*time/T;
-        double c2 = PI2*domain->getRadius()/T;
-        for (int j = 0; j < mesh->getNumGrid(1, geomtk::CENTER); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, geomtk::EDGE); ++i) {
-                double lon = mesh->getGridCoord(0, geomtk::EDGE, i);
-                double lat = mesh->getGridCoord(1, geomtk::CENTER, j);
-                (*v)(0, 0, i, j) = k*pow(sin(lon), 2.0)*sin(lat*2.0)*cosT+c2*cos(lat);
+        k = 10.0*R/period;
+        double c1 = PI2*time/period;
+        double c2 = PI2*R/period;
+        for (int j = 0; j < mesh->getNumGrid(1, CENTER); ++j) {
+            for (int i = 0; i < mesh->getNumGrid(0, EDGE); ++i) {
+                double lon = mesh->getGridCoord(0, EDGE, i)-c1;
+                double lat = mesh->getGridCoord(1, CENTER, j);
+                (*V)(timeLevel, 0, i, j) =
+                    k*pow(sin(lon), 2.0)*sin(lat*2.0)*cosT+c2*cos(lat);
             }
         }
-        for (int j = 0; j < mesh->getNumGrid(1, geomtk::EDGE); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, geomtk::CENTER); ++i) {
-                double lon = mesh->getGridCoord(0, geomtk::CENTER, i)-c1;
-                double lat = mesh->getGridCoord(1, geomtk::EDGE, j);
-                (*v)(0, 1, i, j) = k*sin(lon*2.0)*cos(lat)*cosT;
+        for (int j = 0; j < mesh->getNumGrid(1, EDGE); ++j) {
+            for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
+                double lon = mesh->getGridCoord(0, CENTER, i)-c1;
+                double lat = mesh->getGridCoord(1, EDGE, j);
+                (*V)(timeLevel, 1, i, j) = k*sin(lon*2.0)*cos(lat)*cosT;
             }
         }
+        // TEST: calculate velocity gradient tensor analytically
+#define USE_ANALYTICAL_TENSOR 0
+#if USE_ANALYTICAL_TENSOR == 1
+        for (int j = 0; j < mesh->getNumGrid(1, CENTER); ++j) {
+            for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
+                double lon = mesh->getGridCoord(0, CENTER, i)-c1;
+                double lat = mesh->getGridCoord(1, CENTER, j);
+                double RcosLat = R*cos(lat);
+                double tanLat = tan(lat);
+                double u = k*pow(sin(lon), 2.0)*sin(lat*2.0)*cosT+c2*cos(lat);
+                double v = k*sin(lon*2.0)*cos(lat)*cosT;
+                double dudlon = k*2.0*sin(lon)*cos(lon)*sin(lat*2.0)*cosT/RcosLat;
+                double dudlat = (k*pow(sin(lon), 2.0)*cos(lat*2.0)*2.0*cosT-c2*sin(lat))/R;
+                double dvdlon = k*cos(lon*2.0)*2.0*cos(lat)*cosT/RcosLat;
+                double dvdlat = -k*sin(lon*2.0)*sin(lat)*cosT/R;
+                (*T)(timeLevel, 0, 0, i, j) = dudlon;
+                (*T)(timeLevel, 0, 1, i, j) = dudlat+u/R*tanLat;
+                (*T)(timeLevel, 1, 0, i, j) = dvdlon;
+                (*T)(timeLevel, 1, 1, i, j) = dvdlat+v/R*tanLat;
+            }
+        }
+#endif
     }
-    v->applyBndCond(timeLevel, UPDATE_HALF_LEVEL);
+    V->applyBndCond(timeLevel, UPDATE_HALF_LEVEL);
+#if USE_ANALYTICAL_TENSOR != 1
+    T->calcFromVector(*V, timeLevel);
+#endif
+    T->applyBndCond(timeLevel, UPDATE_HALF_LEVEL);
 }
 
 }

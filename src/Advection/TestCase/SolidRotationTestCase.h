@@ -7,11 +7,9 @@ namespace lady {
 
 class SolidRotationTestCase : public AdvectionTestCase {
 protected:
-    double angleSpeed;
-    double U0;
-    double alpha;
-    double R;
-    double H0;
+    double angleSpeed, U0, alpha;
+    LADY_SPACE_COORD *axisPole, *c0, *cr0;
+    double R, H0;
 public:
     SolidRotationTestCase();
     virtual ~SolidRotationTestCase();
@@ -20,6 +18,8 @@ public:
     Time getEndTime() const;
     double getStepSize() const;
 
+    void calcInitCond(AdvectionManager &advectionManager);
+    void calcSolution(double time, LADY_SCALAR_FIELD &q);
     void advance(double time, int timeLevel);
 };
 

@@ -6,8 +6,8 @@ using lady::DeformationTestCase;
 using lady::SolidRotationTestCase;
 using lady::AdvectionManager;
 
-#define USE_DEFORMATION_TEST_CASE 0
-#define USE_SOLID_ROTATION_TEST_CASE 1
+#define USE_DEFORMATION_TEST_CASE 1
+#define USE_SOLID_ROTATION_TEST_CASE 0
 
 int main(int argc, const char *argv[])
 {
@@ -24,14 +24,14 @@ int main(int argc, const char *argv[])
     timeManager.init(testCase.getStartTime(), testCase.getEndTime(),
                      testCase.getStepSize());
 
-    advectionManager.init(testCase.getDomain(), testCase.getMesh(), 64*30);
-    
-    advectionManager.output(o1.run("%3.3d", timeManager.getNumStep()),
-                            timeManager.getOldLevel());
+    advectionManager.init(testCase.getDomain(), testCase.getMesh(), 128);
 
     testCase.advance(timeManager.getSeconds(), timeManager.getOldLevel());
-//    testCase.outputVelocity(o2.run("%3.3d", timeManager.getNumStep()),
-//                            timeManager.getOldLevel());
+
+    advectionManager.output(o1.run("%3.3d", timeManager.getNumStep()),
+                            timeManager.getOldLevel());
+    testCase.outputVelocity(o2.run("%3.3d", timeManager.getNumStep()),
+                            timeManager.getOldLevel());
 
     while (!timeManager.isFinished()) {
         testCase.advance(timeManager.getSeconds()+timeManager.getStepSize(),
@@ -40,12 +40,13 @@ int main(int argc, const char *argv[])
                                  timeManager.getOldLevel(),
                                  timeManager.getHalfLevel(),
                                  timeManager.getNewLevel(),
-                                 testCase.getVelocityField());
+                                 testCase.getVelocityField(),
+                                 testCase.getTensorField());
         timeManager.advance();
         advectionManager.output(o1.run("%3.3d", timeManager.getNumStep()),
                                 timeManager.getOldLevel());
-//        testCase.outputVelocity(o2.run("%3.3d", timeManager.getNumStep()),
-//                                timeManager.getOldLevel());
+        testCase.outputVelocity(o2.run("%3.3d", timeManager.getNumStep()),
+                                timeManager.getOldLevel());
     }
 
     return 0;

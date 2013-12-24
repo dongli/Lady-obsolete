@@ -22,7 +22,7 @@ public:
      * 4th-order Runge-Kutta method is used to integrate advection equations.
      */
     void advance(double dt, int oldLevel, int halfLevel, int newLevel,
-                 const LADY_VELOCITY_FIELD &V);
+                 const LADY_VELOCITY_FIELD &V, const LADY_TENSOR_FIELD &T);
 };
 
 }

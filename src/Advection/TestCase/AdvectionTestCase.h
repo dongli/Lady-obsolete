@@ -9,7 +9,8 @@ class AdvectionTestCase {
 protected:
     LADY_DOMAIN *domain;
     LADY_MESH *mesh;
-    LADY_VELOCITY_FIELD *v;
+    LADY_VELOCITY_FIELD *V;
+    LADY_TENSOR_FIELD *T;
 public:
     AdvectionTestCase();
     virtual ~AdvectionTestCase();
@@ -17,6 +18,7 @@ public:
     const LADY_DOMAIN& getDomain() const;
     const LADY_MESH& getMesh() const;
     const LADY_VELOCITY_FIELD& getVelocityField() const;
+    const LADY_TENSOR_FIELD& getTensorField() const;
     void outputVelocity(const string &fileName, int timeLevel) const;
 
     /**
@@ -45,8 +47,6 @@ public:
      *
      *  @param time      the current time in seconds.
      *  @param timeLevel the time level (old or new).
-     *
-     *  @return None.
      */
     virtual void advance(double time, int timeLevel) = 0;
 };
