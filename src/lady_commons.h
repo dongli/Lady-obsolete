@@ -19,18 +19,24 @@ using std::string;
 using std::vector;
 
 using arma::vec;
+using arma::mat;
 using arma::cube;
 
 using geomtk::RAD;
 using geomtk::PI2;
 using geomtk::BILINEAR;
 using geomtk::Time;
+using geomtk::ScalarField;
+using geomtk::VectorField;
 using geomtk::A_GRID;
 using geomtk::C_GRID;
 using geomtk::CENTER;
 using geomtk::EDGE;
+using geomtk::TimeLevels;
+using geomtk::TimeLevelIndex;
     
 #define LADY_SPACE_COORD geomtk::SphereCoord
+#define LADY_BODY_COORD geomtk::BodyCoord
 #define LADY_VELOCITY geomtk::SphereVelocity
 #define LADY_MATRIX arma::mat
 #define LADY_LIST std::list
@@ -38,8 +44,8 @@ using geomtk::EDGE;
 #define LADY_DOMAIN geomtk::SphereDomain
 #define LADY_MESH geomtk::RLLMesh
 #define LADY_MESH_INDEX geomtk::RLLMeshIndex
+#define LADY_SCALAR_FIELD geomtk::RLLField<double>
 #define LADY_VELOCITY_FIELD geomtk::RLLVelocityField
-#define LADY_TENSOR_FIELD geomtk::RLLTensorField
 #define LADY_REGRID geomtk::RLLRegrid
 
 }

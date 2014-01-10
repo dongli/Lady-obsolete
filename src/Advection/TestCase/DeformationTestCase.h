@@ -25,7 +25,8 @@ public:
     Time getEndTime() const;
     double getStepSize() const;
 
-    void advance(double time, int timeLevel);
+    void calcInitCond(AdvectionManager &advectionManager);
+    void advance(double time, const TimeLevelIndex<2> &timeIdx);
 };
 
 }

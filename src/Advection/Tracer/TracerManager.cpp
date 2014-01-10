@@ -1,4 +1,5 @@
-#include <TracerManager.h>
+#include "TracerManager.h"
+#include "TracerSkeleton.h"
 
 namespace lady
 {
@@ -49,7 +50,13 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
         dx[m] = domain.getAxisSpan(m)/nt[m];
     }
 #endif
+#if DEBUG_CROSS_POLE == 1 || DEBUG_EQUATOR == 1
+    double h = dx[0];
+#else
+    double h = dx.max();
+#endif
     int i[domain.getNumDim()];
+    TimeLevelIndex<2> initTimeIdx;
     memset(i, 0, sizeof(int)*domain.getNumDim()); i[0] = -1;
     for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
         // set spatial index
@@ -61,32 +68,42 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
             }
         }
         // set coordinate
+        LADY_SPACE_COORD &x0 = (*tracer)->getX(initTimeIdx);
         for (int m = 0; m < domain.getNumDim(); ++m) {
-            (*tracer)->getX(0)(m) = domain.getAxisStart(m)+dx[m]*0.5+dx[m]*i[m];
+            x0(m) = domain.getAxisStart(m)+dx[m]*0.5+dx[m]*i[m];
         }
         // set mesh index
-        (*tracer)->getMeshIndex(0).locate(mesh, (*tracer)->getX(0));
+        (*tracer)->getMeshIndex(initTimeIdx).locate(mesh, x0);
         // set deformation matrix
-        (*tracer)->getH(0).zeros();
-#if DEBUG_CROSS_POLE == 1 || DEBUG_EQUATOR == 1
-        (*tracer)->getH(0)(0, 0) = 2*dx[0];
-        (*tracer)->getH(0)(1, 1) = 2*dx[0];
-#else
+        LADY_MATRIX &H0 = (*tracer)->getH(initTimeIdx);
+        H0.zeros();
         for (int m = 0; m < domain.getNumDim(); ++m) {
-            (*tracer)->getH(0)(m, m) = 2*dx.max(); // TODO: Could we set H this way?
+            H0(m, m) = h; // TODO: Could we set H this way?
         }
-#endif
+        (*tracer)->getSkeleton().init(domain, mesh);
+        (*tracer)->updateH(domain, initTimeIdx);
     }
     // -------------------------------------------------------------------------
     REPORT_NOTICE(numTracer << " tracers are initialized.");
 }
+    
+void TracerManager::registerTracer(const string &longName) {
+    tracerNames.push_back(longName);
+    LADY_LIST<Tracer*>::iterator tracer;
+    for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
+        (*tracer)->addSpecies();
+    }
+    REPORT_NOTICE("\"" << longName << "\" is registered.");
+}
 
-void TracerManager::output(const string &fileName, int timeLevel) {
-    int ncId, numTracerDimId, numDimDimId;
+void TracerManager::output(const string &fileName,
+                           const TimeLevelIndex<2> &oldTimeIdx) {
+    int ncId, numTracerDimId, numSkelDimId, numDimDimId;
     int qDimIds[2], qVarId;
     int hDimIds[3], hVarId;
+    int skelDimIds[3], skelVarId;
     char str[100];
-    int i;
+    int l;
     double *x;
     LADY_LIST<Tracer*>::iterator tracer;
 
@@ -97,6 +114,11 @@ void TracerManager::output(const string &fileName, int timeLevel) {
     if (nc_def_dim(ncId, "num_tracer", tracers.size(), &numTracerDimId)
         != NC_NOERR) {
         REPORT_ERROR("Failed to define dimension \"num_tracer\"!");
+    }
+
+    if (nc_def_dim(ncId, "num_skel", domain->getNumDim()*2, &numSkelDimId)
+        != NC_NOERR) {
+        REPORT_ERROR("Failed to define dimension \"num_skel\"!");
     }
 
     if (nc_def_dim(ncId, "num_dim", domain->getNumDim(), &numDimDimId)
@@ -139,39 +161,69 @@ void TracerManager::output(const string &fileName, int timeLevel) {
         != NC_NOERR) {
         REPORT_ERROR("Failed to put attribute in \"" << fileName << "\"!");
     }
+
+    skelDimIds[0] = numTracerDimId;
+    skelDimIds[1] = numSkelDimId;
+    skelDimIds[2] = numDimDimId;
+    if (nc_def_var(ncId, "skel", NC_DOUBLE, 3, skelDimIds, &skelVarId)
+        != NC_NOERR) {
+        REPORT_ERROR("Failed to define variable \"skel\"!");
+    }
+    sprintf(str, "tracer skeleton");
+    if (nc_put_att(ncId, skelVarId, "long_name", NC_CHAR, strlen(str), str)
+        != NC_NOERR) {
+        REPORT_ERROR("Failed to put attribute in \"" << fileName << "\"!");
+    }
     
     if (nc_enddef(ncId) != NC_NOERR) {
 
     }
     // -------------------------------------------------------------------------
     x = new double[tracers.size()*domain->getNumDim()];
-    i = 0;
+    l = 0;
     for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
         for (int m = 0; m < domain->getNumDim(); ++m) {
-            x[i++] = (*tracer)->getX(timeLevel)(m);
+            x[l++] = (*tracer)->getX(oldTimeIdx)(m);
         }
     }
     if (nc_put_var(ncId, qVarId, x) != NC_NOERR) {
         REPORT_ERROR("Failed to put variable in \"" << fileName << "\"!");
     }
+    delete [] x;
 
     x = new double[tracers.size()*domain->getNumDim()*domain->getNumDim()];
-    i = 0;
+    l = 0;
     for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
         for (int m1 = 0; m1 < domain->getNumDim(); ++m1) {
             for (int m2 = 0; m2 < domain->getNumDim(); ++m2) {
-                x[i++] = (*tracer)->getH(timeLevel)(m1, m2);
+                x[l++] = (*tracer)->getH(oldTimeIdx)(m1, m2);
             }
         }
     }
     if (nc_put_var(ncId, hVarId, x) != NC_NOERR) {
         REPORT_ERROR("Failed to put variable in \"" << fileName << "\"!");
     }
+    delete [] x;
+
+    x = new double[tracers.size()*4*domain->getNumDim()];
+    l = 0;
+    for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
+        TracerSkeleton &s = (*tracer)->getSkeleton();
+        vector<LADY_SPACE_COORD*> &xs = s.getXs(oldTimeIdx);
+        for (int i = 0; i < xs.size(); ++i) {
+            for (int m = 0; m < domain->getNumDim(); ++m) {
+                x[l++] = (*xs[i])(m);
+            }
+        }
+    }
+    if (nc_put_var(ncId, skelVarId, x) != NC_NOERR) {
+        REPORT_ERROR("Failed to put variable in \"" << fileName << "\"!");
+    }
+    delete [] x;
     // -------------------------------------------------------------------------
     if (nc_close(ncId) != NC_NOERR) {
         REPORT_ERROR("Failed to close file \"" << fileName << "\"!");
     }
-
     REPORT_NOTICE("File \"" << fileName << "\" is outputted.");
 }
 

@@ -9,6 +9,8 @@
 
 cmake_minimum_required (VERSION 2.8)
 
+add_definitions(-DDEBUG)
+
 project (lady CXX)
 
 # ------------------------------------------------------------------------------
@@ -34,6 +36,7 @@ add_subdirectory (${PROJECT_SOURCE_DIR}/external/geomtk)
 # source directory structure
 set (source_directories
     "${PROJECT_SOURCE_DIR}/src"
+    "${PROJECT_SOURCE_DIR}/src/Parcel"
     "${PROJECT_SOURCE_DIR}/src/Advection"
     "${PROJECT_SOURCE_DIR}/src/Advection/Tracer"
     "${PROJECT_SOURCE_DIR}/src/Advection/TestCase"

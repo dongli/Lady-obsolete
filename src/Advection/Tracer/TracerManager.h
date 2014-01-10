@@ -31,12 +31,12 @@ public:
     void registerTracer(const string &longName);
     
     /**
-     *  Output tracers on given time level into netCDF file.
+     *  Output tracers on old time level into netCDF file.
      *
-     *  @param fileName  the output netCDF file name.
-     *  @param timeLevel the time level.
+     *  @param fileName   the output netCDF file name.
+     *  @param oldTimeIdx the old time level index.
      */
-    void output(const string &fileName, int timeLevel);
+    void output(const string &fileName, const TimeLevelIndex<2> &oldTimeIdx);
 };
 
 }

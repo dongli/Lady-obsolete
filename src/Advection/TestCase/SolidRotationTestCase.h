@@ -20,7 +20,7 @@ public:
 
     void calcInitCond(AdvectionManager &advectionManager);
     void calcSolution(double time, LADY_SCALAR_FIELD &q);
-    void advance(double time, int timeLevel);
+    void advance(double time, const TimeLevelIndex<2> &timeIdx);
 };
 
 }

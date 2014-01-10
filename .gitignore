@@ -19,6 +19,7 @@ doc/latex
 
 # CMake files
 CMakeFiles
+CMakeScripts
 CMakeCache.txt
 cmake_install.cmake
 install_manifest.txt
@@ -26,6 +27,9 @@ Testing
 DartConfiguration.tcl
 CTestTestfile.cmake
 Makefile
+*.build
+*.xcodeproj
+Debug
 
 *.nc
 *.pdf

@@ -20,20 +20,14 @@ const LADY_VELOCITY_FIELD& AdvectionTestCase::getVelocityField() const {
     return *V;
 }
 
-const LADY_TENSOR_FIELD& AdvectionTestCase::getTensorField() const {
-    return *T;
-}
-
 void AdvectionTestCase::outputVelocity(const string &fileName,
-                                       int timeLevel) const {
+                                       const TimeLevelIndex<2> &oldTimeIdx) const {
     if (dynamic_cast<geomtk::RLLMesh*>(mesh)) {
         int ncId, lonDimId, latDimId, levDimId, dimDimId;
         int lonVarId, latVarId, levVarId;
         int dimIds[5];
-        int uVarId, vVarId, wVarId, tVarId;
+        int uVarId, vVarId, wVarId;
         vec lon, lat, lev;
-        cube u, v, w;
-        double *t;
         char s[100];
 
         if (nc_create(fileName.c_str(), NC_CLOBBER, &ncId)
@@ -145,20 +139,6 @@ void AdvectionTestCase::outputVelocity(const string &fileName,
             dimIds[1] = latDimId;
             dimIds[0] = levDimId;
         }
-        if (nc_def_var(ncId, "t", NC_DOUBLE, domain->getNumDim()+2, dimIds,
-            &tVarId) != NC_NOERR) {
-            REPORT_ERROR("Failed to define variable t!");
-        }
-        sprintf(s, "velocity gradient tensor");
-        if (nc_put_att(ncId, tVarId, "long_name", NC_CHAR, strlen(s), s)
-            != NC_NOERR) {
-            REPORT_ERROR("Failed to put attribute to variable t!");
-        }
-        sprintf(s, "s-1");
-        if (nc_put_att(ncId, tVarId, "units", NC_CHAR, strlen(s), s)
-            != NC_NOERR) {
-            REPORT_ERROR("Failed to put attribute to variable t!");
-        }
         // ---------------------------------------------------------------------
         if (nc_enddef(ncId)) {
             REPORT_ERROR("Failed to end define!");
@@ -176,49 +156,52 @@ void AdvectionTestCase::outputVelocity(const string &fileName,
         }
         // =====================================================================
         if (domain->getNumDim() == 2) {
+            mat u, v;
             u.reshape(mesh->getNumGrid(0, CENTER), mesh->getNumGrid(1, CENTER), 1);
             v.reshape(mesh->getNumGrid(0, CENTER), mesh->getNumGrid(1, CENTER), 1);
-            V->convert(A_GRID, timeLevel, u, v);
+            V->convert(A_GRID, oldTimeIdx, u, v);
+            if (nc_put_var(ncId, uVarId, u.memptr()) != NC_NOERR) {
+                REPORT_ERROR("Failed to put variable u!");
+            }
+            if (nc_put_var(ncId, vVarId, v.memptr()) != NC_NOERR) {
+                REPORT_ERROR("Failed to put variable v!");
+            }
         } else if (domain->getNumDim() == 3) {
+            cube u, v, w;
             u.reshape(mesh->getNumGrid(0, CENTER), mesh->getNumGrid(1, CENTER),
                       mesh->getNumGrid(2, CENTER));
             v.reshape(mesh->getNumGrid(0, CENTER), mesh->getNumGrid(1, CENTER),
                       mesh->getNumGrid(2, CENTER));
             w.reshape(mesh->getNumGrid(0, CENTER), mesh->getNumGrid(1, CENTER),
                       mesh->getNumGrid(2, CENTER));
-            V->convert(A_GRID, timeLevel, u, v, w);
-        }
-        if (nc_put_var(ncId, uVarId, u.memptr()) != NC_NOERR) {
-            REPORT_ERROR("Failed to put variable u!");
-        }
-        if (nc_put_var(ncId, vVarId, v.memptr()) != NC_NOERR) {
-            REPORT_ERROR("Failed to put variable v!");
-        }
-        // =====================================================================
-        t = new double[mesh->getNumGrid(0, CENTER)*mesh->getNumGrid(1, CENTER)*
-                       mesh->getNumGrid(2, CENTER)*domain->getNumDim()*
-                       domain->getNumDim()];
-        int l = 0;
-        for (int k = 0; k < mesh->getNumGrid(2, CENTER); ++k) {
-            for (int j = 0; j < mesh->getNumGrid(1, CENTER); ++j) {
-                for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
-                    for (int m1 = 0; m1 < domain->getNumDim(); ++m1) {
-                        for (int m2 = 0; m2 < domain->getNumDim(); ++m2) {
-                            t[l++] = (*T)(timeLevel, m1, m2, i, j, k);
-                        }
-                    }
-                }
+            V->convert(A_GRID, oldTimeIdx, u, v, w);
+            if (nc_put_var(ncId, uVarId, u.memptr()) != NC_NOERR) {
+                REPORT_ERROR("Failed to put variable u!");
+            }
+            if (nc_put_var(ncId, vVarId, v.memptr()) != NC_NOERR) {
+                REPORT_ERROR("Failed to put variable v!");
+            }
+            if (nc_put_var(ncId, wVarId, w.memptr()) != NC_NOERR) {
+                REPORT_ERROR("Failed to put variable w!");
             }
         }
-        if (nc_put_var(ncId, tVarId, t) != NC_NOERR) {
-            REPORT_ERROR("Failed to put variable t!");
-        }
-        delete [] t;
         // ---------------------------------------------------------------------
         if (nc_close(ncId)) {
             REPORT_ERROR("Failed to close file " << fileName << "!");
         }
     }
+}
+
+void AdvectionTestCase::calcInitCond(AdvectionManager &advectionManager) {
+    assert(q.size() > 0);
+    geomtk::StampString s("test tracer ", "");
+    for (int i = 0; i < q.size(); ++i) {
+        advectionManager.input(s.run("%d", i), *(q[i]));
+    }
+}
+    
+void AdvectionTestCase::calcSolution(double time, LADY_SCALAR_FIELD &q) {
+    REPORT_ERROR("calcSolution is not available!");
 }
 
 }
