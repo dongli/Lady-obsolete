@@ -17,19 +17,11 @@
 doc/html
 doc/latex
 
-# CMake files
-CMakeFiles
-CMakeScripts
-CMakeCache.txt
-cmake_install.cmake
-install_manifest.txt
-Testing
-DartConfiguration.tcl
-CTestTestfile.cmake
-Makefile
-*.build
-*.xcodeproj
+# build files
 Debug
+make
+build
 
 *.nc
 *.pdf
+mlpack-1.0.8
