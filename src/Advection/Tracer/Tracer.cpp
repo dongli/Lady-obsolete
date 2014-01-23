@@ -82,8 +82,8 @@ double Tracer::getTotalRemapWeight() const {
     return totalRemapWeight;
 }
 
-void Tracer::updateH(const LADY_DOMAIN &domain,
-                     const TimeLevelIndex<2> &timeIdx) {
+void Tracer::updateDeformationMatrix(const LADY_DOMAIN &domain,
+                                     const TimeLevelIndex<2> &timeIdx) {
     // fit "linear" deformation matrix to skeleton
     vector<LADY_BODY_COORD*> &ys = skeleton->getYs();
     vector<LADY_SPACE_COORD*> &xs = skeleton->getXs(timeIdx);

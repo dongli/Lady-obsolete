@@ -73,8 +73,8 @@ public:
      *  @param domain  the domain used for differencing coordinates.
      *  @param timeIdx the time level index.
      */
-    void updateH(const LADY_DOMAIN &domain,
-                 const TimeLevelIndex<2> &timeIdx);
+    void updateDeformationMatrix(const LADY_DOMAIN &domain,
+                                 const TimeLevelIndex<2> &timeIdx);
     
     /**
      *  Check the linear deformation transformation validity.

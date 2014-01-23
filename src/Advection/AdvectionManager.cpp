@@ -217,7 +217,7 @@ void AdvectionManager::integrate_RK4(double dt,
             idx1s[i]->locate(mesh, *x1s[i]);
         }
         // ---------------------------------------------------------------------
-        (*tracer)->updateH(domain, newTimeIdx);
+        (*tracer)->updateDeformationMatrix(domain, newTimeIdx);
         (*tracer)->selfInspect(domain, newTimeIdx);
     }
 }

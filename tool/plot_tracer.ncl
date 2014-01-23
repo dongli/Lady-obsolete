@@ -36,7 +36,7 @@ begin
     res_s2@gsLineColor = "red"
 
     ; check = ispan(115, 115, 1)
-    check = (/10/)
+    ; check = (/10/)
 
     do l = 0, num_time-1, 2
         system("echo time step: "+l)

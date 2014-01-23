@@ -24,7 +24,7 @@ private:
     // range search parameters
     Tree *cellTree;                 //>! tree data structure for mesh cells for
                                     //>! avoiding rebuild of tree each time
-    LADY_MATRIX cellCoords;         //>! collection of cell space coordinates
+    mat cellCoords;                 //>! collection of cell space coordinates
     vector<size_t> cellCoordsMap;   //>! mapping for cells since tree building
                                     //>! will modify the order of cells
 public:
