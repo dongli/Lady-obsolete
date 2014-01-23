@@ -268,6 +268,47 @@ void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
                 (*tracer)->connect(cell);
             }
         }
+#define CHECK_NEIGHBORS 0
+#if CHECK_NEIGHBORS == 1
+        std::ofstream file;
+        file.open("neighbors.txt");
+        file << "p0 = (/" << (*tracer)->getX(timeIdx)(0) << "," << (*tracer)->getX(timeIdx)(1) << "/)" << endl;
+        file << "ngb = new((/" << neighbors[0].size() << ",2/), double)" << endl;
+        for (int m = 0; m < 2; ++m) {
+            file << "ngb(:," << m << ") = (/";
+            for (int i = 0; i < neighbors.size(); ++i) {
+                for (int j = 0; j < neighbors[i].size()-1; ++j) {
+                    file << (*tracerMeshCells)(0, cellCoordsMap[neighbors[i][j]]).getCoord()(m) << ",";
+                }
+                file << (*tracerMeshCells)(0, cellCoordsMap[neighbors[i][neighbors[i].size()-1]]).getCoord()(m) << "/)" << endl;
+            }
+        }
+        int n = 100;
+        file << "c0 = new((/" << n << ",2/), double)" << endl;
+        double dtheta = PI2/(n-1);
+        double lat = M_PI_2-longAxisSize/domain.getRadius();
+        vector<LADY_SPACE_COORD*> c0(n);
+        for (int i = 0; i < n; ++i) {
+            c0[i] = new LADY_SPACE_COORD(2);
+            LADY_SPACE_COORD xr(2);
+            double theta = i*dtheta;
+            xr(0) = theta;
+            xr(1) = lat;
+            domain.rotateBack((*tracer)->getX(timeIdx), *(c0[i]), xr);
+        }
+        for (int m = 0; m < 2; ++m) {
+            file << "c0(:," << m << ") = (/";
+            for (int i = 0; i < c0.size()-1; ++i) {
+                file << (*(c0[i]))(m) << ",";
+            }
+            file << (*(c0[c0.size()-1]))(m) << "/)" << endl;
+        }
+        for (int i = 0; i < n; ++i) {
+            delete c0[i];
+        }
+        file.close();
+        CHECK_POINT
+#endif
     }
 }
 
