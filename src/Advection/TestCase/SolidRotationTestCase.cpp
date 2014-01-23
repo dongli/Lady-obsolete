@@ -36,11 +36,12 @@ SolidRotationTestCase::SolidRotationTestCase() {
     halfLat[0] = -M_PI_2+lat0*0.5;
     halfLat[numLat-2] = M_PI_2-lat0*0.5;
     mesh->setGridCoords(1, numLat, fullLat, halfLat);
+    mesh->setCellVolumes();
     // -------------------------------------------------------------------------
     // initialize velocity and its gradient tensor
     V = new LADY_VELOCITY_FIELD("v", "m s-1", "advection velocity",
                                 *mesh, HAS_HALF_LEVEL);
-    V->create(2, C_GRID);
+    V->create(_2D, C_GRID);
     // -------------------------------------------------------------------------
     // set parameters
     // =========================================================================
@@ -153,7 +154,7 @@ void SolidRotationTestCase::calcSolution(double time, LADY_SCALAR_FIELD &q) {
     
     for (int j = 0; j < mesh->getNumGrid(1, CENTER); ++j) {
         for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
-            double lon = mesh->getGridCoord(0, CENTER, i);
+            double lon = mesh->getGridCoordComp(0, CENTER, i);
             double sinLat = mesh->getSinLat(CENTER, j);
             double sinLat2 = mesh->getSinLat2(CENTER, j);
             double d = domain->calcDistance(*c0, lon, sinLat, sinLat2);

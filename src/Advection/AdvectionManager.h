@@ -2,13 +2,31 @@
 #define __Lady_AdvectionManager__
 
 #include "TracerManager.h"
+#include "TracerMeshCell.h"
 
 namespace lady {
 
+// shortcuts for MLPACK classes
+typedef mlpack::tree::BinarySpaceTree<
+    mlpack::bound::HRectBound<2>,
+    mlpack::range::RangeSearchStat> Tree;
+typedef mlpack::range::RangeSearch<> Searcher;
+
+/**
+ *  This class specifies the manager of linear advection.
+ */
 class AdvectionManager {
 protected:
     TracerManager tracerManager;
-    LADY_REGRID *regrid; // used to interpolate velocity
+    LADY_FIELD<TracerMeshCell> *tracerMeshCells;
+    LADY_REGRID *regrid; //>! used to interpolate velocity onto tracers
+private:
+    // range search parameters
+    Tree *cellTree;                 //>! tree data structure for mesh cells for
+                                    //>! avoiding rebuild of tree each time
+    LADY_MATRIX cellCoords;         //>! collection of cell space coordinates
+    vector<size_t> cellCoordsMap;   //>! mapping for cells since tree building
+                                    //>! will modify the order of cells
 public:
     AdvectionManager();
     ~AdvectionManager();
@@ -23,12 +41,22 @@ public:
     void init(const LADY_DOMAIN &domain, const LADY_MESH &mesh, int numParcel);
 
     /**
+     *  Register a tracer species.
+     *
+     *  @param name  the name of the tracer.
+     *  @param units the units of the tracer.
+     *  @param brief the brief about the tracer.
+     */
+    void registerTracer(const string &name, const string &units,
+                        const string &brief);
+
+    /**
      *  Input one tracer species from given scalar field.
      *
-     *  @param longName the long name of the tracer.
-     *  @param q        the input scalar field.
+     *  @param name the name of the tracer.
+     *  @param q    the input scalar field.
      */
-    void input(const string &longName, const LADY_SCALAR_FIELD &q);
+    void input(const string &name, const LADY_SCALAR_FIELD &q);
 
     /**
      *  Output tracers on old time level into netCDF file.
@@ -39,16 +67,33 @@ public:
     void output(const string &fileName, const TimeLevelIndex<2> &newTimeIdx);
 
     /**
-     *  Advect tracers one time step forward. 4th-order Runge-Kutta method is
-     *  used to integrate advection equations.
+     *  Advect tracers one time step forward, and remap tracers onto mesh cells.
+     *
+     *  @param dt         the time step size.
+     *  @param oldTimeIdx the new time level index.
+     *  @param V          the velocity field.
+     */
+    void advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
+                 const LADY_VELOCITY_FIELD &V);
+private:
+    /**
+     *  Integrate the advection equations by using 4th-order Runge-Kutta method.
      *
      *  @param dt         the time step size.
      *  @param oldTimeIdx the old time level index.
      *  @param V          the velocity field.
      */
-    void advance(double dt, const TimeLevelIndex<2> &oldTimeIdx,
-                 const LADY_VELOCITY_FIELD &V);};
+    void integrate_RK4(double dt, const TimeLevelIndex<2> &oldTimeIdx,
+                       const LADY_VELOCITY_FIELD &V);
 
+    /**
+     *  Prepare the bidirectional remapping between tracers and mesh. Find out
+     *  the mesh cells that a tracer will affected and calculate the weights.
+     *
+     *  @param timeIdx the time level index.
+     */
+    void connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx);
+};
 }
 
 #endif

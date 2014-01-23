@@ -2,12 +2,15 @@
 #define __lady_commons__
 
 #include "geomtk.h"
+#include "mlpack/methods/range_search/range_search.hpp"
 
 #include <iostream>
 #include <iomanip>
 #include <list>
+#include <unordered_map>
 #include <string>
 #include <ctime>
+#include <fstream>
 
 namespace lady {
     
@@ -17,6 +20,8 @@ using std::setw;
 using std::setprecision;
 using std::string;
 using std::vector;
+using std::list;
+using std::unordered_map;
 
 using arma::vec;
 using arma::mat;
@@ -34,16 +39,18 @@ using geomtk::CENTER;
 using geomtk::EDGE;
 using geomtk::TimeLevels;
 using geomtk::TimeLevelIndex;
+using geomtk::SystemTools;
     
 #define LADY_SPACE_COORD geomtk::SphereCoord
 #define LADY_BODY_COORD geomtk::BodyCoord
 #define LADY_VELOCITY geomtk::SphereVelocity
-#define LADY_MATRIX arma::mat
-#define LADY_LIST std::list
+#define LADY_MATRIX mat
+#define LADY_LIST list
 
 #define LADY_DOMAIN geomtk::SphereDomain
 #define LADY_MESH geomtk::RLLMesh
 #define LADY_MESH_INDEX geomtk::RLLMeshIndex
+#define LADY_FIELD geomtk::RLLField
 #define LADY_SCALAR_FIELD geomtk::RLLField<double>
 #define LADY_VELOCITY_FIELD geomtk::RLLVelocityField
 #define LADY_REGRID geomtk::RLLRegrid

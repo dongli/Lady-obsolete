@@ -56,7 +56,7 @@ public:
      *  at the end of derived ones.
      */
     virtual void calcInitCond(AdvectionManager &advectionManager);
-    
+
     /**
      *  Calculate the solution of the test case if any.
      *

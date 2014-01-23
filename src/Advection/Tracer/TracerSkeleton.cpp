@@ -61,16 +61,17 @@ TracerSkeleton& TracerSkeleton::operator=(const TracerSkeleton &other) {
 void TracerSkeleton::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh) {
     // set the body and initial spatial coordinates of skeleton points
     TimeLevelIndex<2> initTimeIdx;
+    double size = 1.0;
     // -------------------------------------------------------------------------
     // sphere domain
     if (domain.getNumDim() == 2) {
-        (*y[0])() << -0.5 <<  0.0 << arma::endr;
-        (*y[1])() <<  0.5 <<  0.0 << arma::endr;
-        (*y[2])() <<  0.0 << -0.5 << arma::endr;
-        (*y[3])() <<  0.0 <<  0.5 << arma::endr;
-        
+        (*y[0])() << -size <<   0.0 << arma::endr;
+        (*y[1])() <<   0.0 << -size << arma::endr;
+        (*y[2])() <<  size <<   0.0 << arma::endr;
+        (*y[3])() <<   0.0 <<  size << arma::endr;
         for (int i = 0; i < y.size(); ++i) {
-            host->getSpaceCoord(domain, initTimeIdx, *y[i], *x.getLevel(0)[i]);
+            host->getSpaceCoord(domain, initTimeIdx, *y[i],
+                                *x.getLevel(initTimeIdx)[i]);
             idx.getLevel(0)[i]->locate(mesh, *x.getLevel(0)[i]);
         }
     } else if (domain.getNumDim() == 3) {

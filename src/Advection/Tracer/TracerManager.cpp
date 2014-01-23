@@ -31,11 +31,11 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
 #if DEBUG_CROSS_POLE == 1
     assert(dynamic_cast<const geomtk::SphereDomain*>(&domain));
     nt[0] = numTracer; nt[1] = 1;
-    dx[0] = PI2/numTracer; dx[1] = 3*RAD;
+    dx(0) = PI2/numTracer; dx(1) = 3*RAD;
 #elif DEBUG_EQUATOR == 1
     assert(dynamic_cast<const geomtk::SphereDomain*>(&domain));
     nt[0] = numTracer; nt[1] = 1;
-    dx[0] = PI2/numTracer; dx[1] = 180*RAD;
+    dx(0) = PI2/numTracer; dx(1) = 180*RAD;
 #else
     int tmp1 = numTracer;
     for (int m = 0; m < domain.getNumDim(); ++m) {
@@ -49,11 +49,6 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
         tmp1 /= nt[m];
         dx[m] = domain.getAxisSpan(m)/nt[m];
     }
-#endif
-#if DEBUG_CROSS_POLE == 1 || DEBUG_EQUATOR == 1
-    double h = dx[0];
-#else
-    double h = dx.max();
 #endif
     int i[domain.getNumDim()];
     TimeLevelIndex<2> initTimeIdx;
@@ -73,12 +68,25 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
             x0(m) = domain.getAxisStart(m)+dx[m]*0.5+dx[m]*i[m];
         }
         // set mesh index
-        (*tracer)->getMeshIndex(initTimeIdx).locate(mesh, x0);
+        LADY_MESH_INDEX &idx0 = (*tracer)->getMeshIndex(initTimeIdx);
+        idx0.locate(mesh, x0);
+        // when tracer is on Pole, transform its coordinate to PS for later use
+        if (idx0.isOnPole()) {
+            x0.transformToPS(domain);
+        }
         // set deformation matrix
         LADY_MATRIX &H0 = (*tracer)->getH(initTimeIdx);
         H0.zeros();
+        vec h(domain.getNumDim());
+#if DEBUG_CROSS_POLE == 1 || DEBUG_EQUATOR == 1
+        h = dx(0)*domain.getRadius()*cos(x0(1));
+#else
+        // for sphere domain
+        h(0) = dx(0)*domain.getRadius()*cos(x0(1));
+        h(1) = dx(1)*domain.getRadius();
+#endif
         for (int m = 0; m < domain.getNumDim(); ++m) {
-            H0(m, m) = h; // TODO: Could we set H this way?
+            H0(m, m) = 0.6*h.max(); // TODO: Could we set H this way?
         }
         (*tracer)->getSkeleton().init(domain, mesh);
         (*tracer)->updateH(domain, initTimeIdx);
@@ -87,13 +95,23 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
     REPORT_NOTICE(numTracer << " tracers are initialized.");
 }
     
-void TracerManager::registerTracer(const string &longName) {
-    tracerNames.push_back(longName);
+void TracerManager::registerTracer(const string &name, const string &units,
+                                   const string &brief) {
+    speciesInfos.push_back(new TracerSpeciesInfo(name, units, brief));
     LADY_LIST<Tracer*>::iterator tracer;
     for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
         (*tracer)->addSpecies();
     }
-    REPORT_NOTICE("\"" << longName << "\" is registered.");
+    REPORT_NOTICE("\"" << name << "\" is registered.");
+}
+
+int TracerManager::getSpeciesIndex(const string &name) const {
+    for (int i = 0; i < speciesInfos.size(); ++i) {
+        if (speciesInfos[i]->getName() == name) {
+            return i;
+        }
+    }
+    REPORT_ERROR("Unregistered tracer species \"" << name << "\"!");
 }
 
 void TracerManager::output(const string &fileName,
@@ -101,7 +119,7 @@ void TracerManager::output(const string &fileName,
     int ncId, numTracerDimId, numSkelDimId, numDimDimId;
     int qDimIds[2], qVarId;
     int hDimIds[3], hVarId;
-    int skelDimIds[3], skelVarId;
+    int sDimIds[3], s1VarId, s2VarId;
     char str[100];
     int l;
     double *x;
@@ -162,15 +180,25 @@ void TracerManager::output(const string &fileName,
         REPORT_ERROR("Failed to put attribute in \"" << fileName << "\"!");
     }
 
-    skelDimIds[0] = numTracerDimId;
-    skelDimIds[1] = numSkelDimId;
-    skelDimIds[2] = numDimDimId;
-    if (nc_def_var(ncId, "skel", NC_DOUBLE, 3, skelDimIds, &skelVarId)
+    sDimIds[0] = numTracerDimId;
+    sDimIds[1] = numSkelDimId;
+    sDimIds[2] = numDimDimId;
+    if (nc_def_var(ncId, "s1", NC_DOUBLE, 3, sDimIds, &s1VarId)
         != NC_NOERR) {
-        REPORT_ERROR("Failed to define variable \"skel\"!");
+        REPORT_ERROR("Failed to define variable \"s1\"!");
     }
-    sprintf(str, "tracer skeleton");
-    if (nc_put_att(ncId, skelVarId, "long_name", NC_CHAR, strlen(str), str)
+    sprintf(str, "tracer actual skeleton");
+    if (nc_put_att(ncId, s1VarId, "long_name", NC_CHAR, strlen(str), str)
+        != NC_NOERR) {
+        REPORT_ERROR("Failed to put attribute in \"" << fileName << "\"!");
+    }
+    
+    if (nc_def_var(ncId, "s2", NC_DOUBLE, 3, sDimIds, &s2VarId)
+        != NC_NOERR) {
+        REPORT_ERROR("Failed to define variable \"s2\"!");
+    }
+    sprintf(str, "tracer fitted skeleton");
+    if (nc_put_att(ncId, s2VarId, "long_name", NC_CHAR, strlen(str), str)
         != NC_NOERR) {
         REPORT_ERROR("Failed to put attribute in \"" << fileName << "\"!");
     }
@@ -216,7 +244,23 @@ void TracerManager::output(const string &fileName,
             }
         }
     }
-    if (nc_put_var(ncId, skelVarId, x) != NC_NOERR) {
+    if (nc_put_var(ncId, s1VarId, x) != NC_NOERR) {
+        REPORT_ERROR("Failed to put variable in \"" << fileName << "\"!");
+    }
+    
+    l = 0;
+    for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
+        TracerSkeleton &s = (*tracer)->getSkeleton();
+        vector<LADY_BODY_COORD*> &ys = s.getYs();
+        for (int i = 0; i < ys.size(); ++i) {
+            LADY_SPACE_COORD xs(domain->getNumDim());
+            (*tracer)->getSpaceCoord(*domain, oldTimeIdx, *ys[i], xs);
+            for (int m = 0; m < domain->getNumDim(); ++m) {
+                x[l++] = xs(m);
+            }
+        }
+    }
+    if (nc_put_var(ncId, s2VarId, x) != NC_NOERR) {
         REPORT_ERROR("Failed to put variable in \"" << fileName << "\"!");
     }
     delete [] x;

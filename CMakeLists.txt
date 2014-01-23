@@ -10,15 +10,19 @@
 cmake_minimum_required (VERSION 2.8)
 
 add_definitions(-DDEBUG)
+set (CMAKE_CXX_FLAGS "-std=c++11")
+
+option (USE_EXTERNAL_MLPACK "Use external library MLPACK" ON)
 
 project (lady CXX)
 
 # ------------------------------------------------------------------------------
 # external libraries
+# Armadillo
 find_package (Armadillo)
 if (NOT ARMADILLO_FOUND)
     if (DEFINED ENV{ARMADILLO_ROOT})
-        message ("@@ Use user provided library Armadillo!")
+        message ("@@ Use user provided library Armadillo.")
         message ("@@ ARMADILLO_ROOT = $ENV{ARMADILLO_ROOT}")
         find_package (Armadillo HINTS $ENV{ARMADILLO_ROOT})
     else ()
@@ -29,8 +33,38 @@ if (NOT ARMADILLO_FOUND)
         )
     endif ()
 endif ()
+include_directories (${ARMADILLO_INCLUDE_DIRS})
 
-add_subdirectory (${PROJECT_SOURCE_DIR}/external/geomtk)
+# MLPACK
+set (mlpack_internal_dir "${PROJECT_SOURCE_DIR}/external/mlpack-1.0.8")
+if (EXISTS ${mlpack_internal_dir} AND NOT ${USE_EXTERNAL_MLPACK})
+    # use internal MLPACK
+    message ("@@ Use internal library MLPACK!")
+    add_subdirectory ("${mlpack_internal_dir}")
+    include_directories ("${PROJECT_BINARY_DIR}/include") # for MLPACK
+else ()
+    # use user provided MLPACK
+    if (DEFINED ENV{MLPACK_ROOT})
+        message ("@@ Use user provided library MLPACK.")
+        message ("@@ MLPACK_ROOT = $ENV{MLPACK_ROOT}")
+        set (MLPACK_INCLUDE_DIR "$ENV{MLPACK_ROOT}/include")
+        set (MLPACK_LIBRARY_DIR "$ENV{MLPACK_ROOT}/lib")
+        find_package(LibXml2 2.6.0 REQUIRED)
+        include_directories (${MLPACK_INCLUDE_DIR} ${LIBXML2_INCLUDE_DIR})
+        link_directories (${MLPACK_LIBRARY_DIR})
+    else ()
+        message (FATAL_ERROR
+            "CMake couldn't find library MLPACK! "
+            "If it have been installed and you know where it is, "
+            "set MLPACK_ROOT (e.g. in .bashrc) to it."
+        )
+    endif ()
+endif ()
+
+# GeoMTK
+add_subdirectory ("${PROJECT_SOURCE_DIR}/external/geomtk")
+include_directories (${GEOMTK_INCLUDE_DIRS})
+link_directories (${GEOMTK_LIBRARY_DIRS})
 
 # ------------------------------------------------------------------------------
 # source directory structure
@@ -40,6 +74,7 @@ set (source_directories
     "${PROJECT_SOURCE_DIR}/src/Advection"
     "${PROJECT_SOURCE_DIR}/src/Advection/Tracer"
     "${PROJECT_SOURCE_DIR}/src/Advection/TestCase"
+    "${PROJECT_SOURCE_DIR}/src/Advection/ModelAdaptor"
 )
 
 # ------------------------------------------------------------------------------
@@ -57,14 +92,7 @@ endforeach ()
 # ------------------------------------------------------------------------------
 # library targets
 add_library (lady STATIC ${headers} ${sources})
-include_directories (
-    ${ARMADILLO_INCLUDE_DIRS}
-    ${GEOMTK_INCLUDE_DIRS}
-)
-link_directories (
-    ${GEOMTK_LIBRARY_DIRS}
-)
-target_link_libraries (lady armadillo)
+target_link_libraries (lady armadillo mlpack)
 add_dependencies (lady geomtk)
 
 # ------------------------------------------------------------------------------

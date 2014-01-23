@@ -2,6 +2,7 @@
 #define __Lady_TracerManager__
 
 #include "Tracer.h"
+#include "TracerSpeciesInfo.h"
 
 namespace lady {
 
@@ -14,7 +15,7 @@ class TracerManager {
 protected:
     const LADY_DOMAIN *domain;
     LADY_LIST<Tracer*> tracers;
-    vector<string> tracerNames;
+    vector<TracerSpeciesInfo*> speciesInfos;
 public:
     TracerManager();
     virtual ~TracerManager();
@@ -28,8 +29,11 @@ public:
      */
     void init(const LADY_DOMAIN &domain, const LADY_MESH &mesh, int numParcel);
 
-    void registerTracer(const string &longName);
-    
+    void registerTracer(const string &name, const string &units,
+                        const string &brief);
+
+    int getSpeciesIndex(const string &name) const;
+
     /**
      *  Output tracers on old time level into netCDF file.
      *

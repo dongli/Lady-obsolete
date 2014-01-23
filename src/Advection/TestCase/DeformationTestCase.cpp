@@ -39,11 +39,12 @@ DeformationTestCase::DeformationTestCase(SubCase subCase, InitCond initCond) {
     halfLat[0] = -M_PI_2+lat0*0.5;
     halfLat[numLat-2] = M_PI_2-lat0*0.5;
     mesh->setGridCoords(1, numLat, fullLat, halfLat);
+    mesh->setCellVolumes();
     // -------------------------------------------------------------------------
     // initialize velocity and its gradient tensor
     V = new LADY_VELOCITY_FIELD("v", "m s-1", "advection velocity",
                                 *mesh, HAS_HALF_LEVEL);
-    V->create(2, C_GRID);
+    V->create(_2D, C_GRID);
     // -------------------------------------------------------------------------
     REPORT_ONLINE;
 }
@@ -78,16 +79,16 @@ void DeformationTestCase::advance(double time,
         k = 2.4;
         for (int j = 0; j < mesh->getNumGrid(1, CENTER); ++j) {
             for (int i = 0; i < mesh->getNumGrid(0, EDGE); ++i) {
-                double lon = mesh->getGridCoord(0, EDGE, i);
-                double lat = mesh->getGridCoord(1, CENTER, j);
+                double lon = mesh->getGridCoordComp(0, EDGE, i);
+                double lat = mesh->getGridCoordComp(1, CENTER, j);
                 (*V)(0, timeIdx, i, j) =
                     k*pow(sin(lon*0.5), 2.0)*sin(lat*2.0)*cosT;
             }
         }
         for (int j = 0; j < mesh->getNumGrid(1, EDGE); ++j) {
             for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
-                double lon = mesh->getGridCoord(0, CENTER, i);
-                double lat = mesh->getGridCoord(1, EDGE, j);
+                double lon = mesh->getGridCoordComp(0, CENTER, i);
+                double lat = mesh->getGridCoordComp(1, EDGE, j);
                 (*V)(1, timeIdx, i, j) = k*0.5*sin(lon)*cos(lat)*cosT;
             }
         }
@@ -95,16 +96,16 @@ void DeformationTestCase::advance(double time,
         k = 2.0;
         for (int j = 0; j < mesh->getNumGrid(1, CENTER); ++j) {
             for (int i = 0; i < mesh->getNumGrid(0, EDGE); ++i) {
-                double lon = mesh->getGridCoord(0, EDGE, i);
-                double lat = mesh->getGridCoord(1, CENTER, j);
+                double lon = mesh->getGridCoordComp(0, EDGE, i);
+                double lat = mesh->getGridCoordComp(1, CENTER, j);
                 (*V)(0, timeIdx, i, j) =
                     k*pow(sin(lon), 2.0)*sin(lat*2.0)*cosT;
             }
         }
         for (int j = 0; j < mesh->getNumGrid(1, EDGE); ++j) {
             for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
-                double lon = mesh->getGridCoord(0, CENTER, i);
-                double lat = mesh->getGridCoord(1, EDGE, j);
+                double lon = mesh->getGridCoordComp(0, CENTER, i);
+                double lat = mesh->getGridCoordComp(1, EDGE, j);
                 (*V)(1, timeIdx, i, j) = k*sin(lon*2.0)*cos(lat)*cosT;
             }
         }
@@ -112,16 +113,16 @@ void DeformationTestCase::advance(double time,
         k = 1.0;
         for (int j = 0; j < mesh->getNumGrid(1, CENTER); ++j) {
             for (int i = 0; i < mesh->getNumGrid(0, EDGE); ++i) {
-                double lon = mesh->getGridCoord(0, EDGE, i);
-                double lat = mesh->getGridCoord(1, CENTER, j);
+                double lon = mesh->getGridCoordComp(0, EDGE, i);
+                double lat = mesh->getGridCoordComp(1, CENTER, j);
                 (*V)(0, timeIdx, i, j) =
                     -k*pow(sin(lon), 2.0)*sin(lat*2.0)*pow(cos(lat), 2.0)*cosT;
             }
         }
         for (int j = 0; j < mesh->getNumGrid(1, EDGE); ++j) {
             for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
-                double lon = mesh->getGridCoord(0, CENTER, i);
-                double lat = mesh->getGridCoord(1, EDGE, j);
+                double lon = mesh->getGridCoordComp(0, CENTER, i);
+                double lat = mesh->getGridCoordComp(1, EDGE, j);
                 (*V)(1, timeIdx, i, j) =
                     k*0.5*sin(lon)*pow(cos(lat), 3.0)*cosT;
             }
@@ -132,16 +133,16 @@ void DeformationTestCase::advance(double time,
         double c2 = PI2*R/period;
         for (int j = 0; j < mesh->getNumGrid(1, CENTER); ++j) {
             for (int i = 0; i < mesh->getNumGrid(0, EDGE); ++i) {
-                double lon = mesh->getGridCoord(0, EDGE, i)-c1;
-                double lat = mesh->getGridCoord(1, CENTER, j);
+                double lon = mesh->getGridCoordComp(0, EDGE, i)-c1;
+                double lat = mesh->getGridCoordComp(1, CENTER, j);
                 (*V)(0, timeIdx, i, j) =
                     k*pow(sin(lon), 2.0)*sin(lat*2.0)*cosT+c2*cos(lat);
             }
         }
         for (int j = 0; j < mesh->getNumGrid(1, EDGE); ++j) {
             for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
-                double lon = mesh->getGridCoord(0, CENTER, i)-c1;
-                double lat = mesh->getGridCoord(1, EDGE, j);
+                double lon = mesh->getGridCoordComp(0, CENTER, i)-c1;
+                double lat = mesh->getGridCoordComp(1, EDGE, j);
                 (*V)(1, timeIdx, i, j) = k*sin(lon*2.0)*cos(lat)*cosT;
             }
         }

@@ -20,15 +20,15 @@ int main(int argc, const char *argv[])
     timeManager.init(testCase.getStartTime(), testCase.getEndTime(),
                      testCase.getStepSize());
 
-    advectionManager.init(testCase.getDomain(), testCase.getMesh(), 500);
+    advectionManager.init(testCase.getDomain(), testCase.getMesh(), 256);
 
     testCase.calcInitCond(advectionManager);
     testCase.advance(timeManager.getSeconds(), oldTimeIdx);
 
     advectionManager.output(o1.run("%3.3d", timeManager.getNumStep()),
                             oldTimeIdx);
-    testCase.outputVelocity(o2.run("%3.3d", timeManager.getNumStep()),
-                            oldTimeIdx);
+//    testCase.outputVelocity(o2.run("%3.3d", timeManager.getNumStep()),
+//                            oldTimeIdx);
     // -------------------------------------------------------------------------
     // integration loop
     while (!timeManager.isFinished()) {
@@ -41,8 +41,8 @@ int main(int argc, const char *argv[])
         oldTimeIdx.shift();
         advectionManager.output(o1.run("%3.3d", timeManager.getNumStep()),
                                 oldTimeIdx);
-        testCase.outputVelocity(o2.run("%3.3d", timeManager.getNumStep()),
-                                oldTimeIdx);
+//        testCase.outputVelocity(o2.run("%3.3d", timeManager.getNumStep()),
+//                                oldTimeIdx);
     }
 
     return 0;

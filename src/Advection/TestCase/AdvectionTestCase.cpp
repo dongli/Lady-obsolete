@@ -194,9 +194,13 @@ void AdvectionTestCase::outputVelocity(const string &fileName,
 
 void AdvectionTestCase::calcInitCond(AdvectionManager &advectionManager) {
     assert(q.size() > 0);
-    geomtk::StampString s("test tracer ", "");
+    geomtk::StampString name("q", ""), brief("test tracer ", "");
     for (int i = 0; i < q.size(); ++i) {
-        advectionManager.input(s.run("%d", i), *(q[i]));
+        advectionManager.registerTracer(name.run("%d", i), "N/A",
+                                        brief.run("%d", i));
+    }
+    for (int i = 0; i < q.size(); ++i) {
+        advectionManager.input(name.run("%d", i), *(q[i]));
     }
 }
     

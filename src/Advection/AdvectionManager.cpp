@@ -6,12 +6,16 @@ namespace lady {
 
 AdvectionManager::AdvectionManager() {
     regrid = NULL;
+    tracerMeshCells = NULL;
     REPORT_ONLINE;
 }
 
 AdvectionManager::~AdvectionManager() {
     if (regrid != NULL) {
         delete regrid;
+    }
+    if (tracerMeshCells != NULL) {
+        delete tracerMeshCells;
     }
     REPORT_OFFLINE;
 }
@@ -20,30 +24,95 @@ void AdvectionManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
                             int numParcel) {
     tracerManager.init(domain, mesh, numParcel);
     ShapeFunction::init(domain);
+    if (regrid == NULL) {
+        regrid = new LADY_REGRID(mesh);
+    }
+    if (tracerMeshCells == NULL) {
+        tracerMeshCells = new LADY_FIELD<TracerMeshCell>(mesh);
+        tracerMeshCells->create(ScalarField, domain.getNumDim(), A_GRID);
+        for (int i = 0; i < mesh.getTotalNumGrid(A_GRID); ++i) {
+            LADY_SPACE_COORD x(domain.getNumDim());
+            mesh.getGridCoord(i, x, A_GRID);
+            x.transformToPS(domain);
+            double volume;
+            mesh.getCellVolume(i, volume);
+            for (int l = 0; l < 2; ++l) {
+                (*tracerMeshCells)(l, i).setCoord(x);
+                (*tracerMeshCells)(l, i).setVolume(volume);
+            }
+        }
+        cellCoords.reshape(3, mesh.getTotalNumGrid(A_GRID));
+        for (int i = 0; i < mesh.getTotalNumGrid(A_GRID); ++i) {
+            LADY_SPACE_COORD x = (*tracerMeshCells)(0, i).getCoord();
+            // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            // TODO: How to hide the mesh details? The transformation should be
+            //       moved into other low level place, and every coordinate
+            //       class should provide getCartCoord() method.
+            x.transformToCart(domain);
+            cellCoords.col(i) = x.getCartCoord();
+            // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        }
+        cellTree = new Tree(cellCoords, cellCoordsMap);
+        cellCoords = cellTree->Dataset();
+    }
+    TimeLevelIndex<2> timeIdx;
+    assert(timeIdx.get() == 0);
+    connectTracersAndMesh(timeIdx);
 }
+
+void AdvectionManager::registerTracer(const string &name, const string &units,
+                                      const string &brief) {
+    tracerManager.registerTracer(name, units, brief);
+    for (int l = 0; l < 2; ++l) {
+        for (int i = 0; i < tracerMeshCells->getMesh().getTotalNumGrid(A_GRID); ++i) {
+            (*tracerMeshCells)(l, i).addSpecies();
+        }
+    }
+}
+
+void AdvectionManager::input(const string &name, const LADY_SCALAR_FIELD &q) {
+    int speciesIdx = tracerManager.getSpeciesIndex(name);
+    TimeLevelIndex<2> timeIdx;
+    assert(timeIdx.get() == 0);
+    // -------------------------------------------------------------------------
+    // transfer the input tracer density field into internal tracer mass field
+    assert(q.getMesh().getTotalNumGrid(A_GRID) ==
+           tracerMeshCells->getMesh().getTotalNumGrid(A_GRID));
+    for (int i = 0; i < q.getMesh().getTotalNumGrid(A_GRID); ++i) {
+        double &m = (*tracerMeshCells)(timeIdx, i).getSpeciesMass(speciesIdx);
+        m = q(timeIdx, i)*(*tracerMeshCells)(timeIdx, i).getVolume();
+    }
+    // -------------------------------------------------------------------------
+    // transfer the tracer mass from cells to tracers
+    LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();
+    for (; tracer != tracerManager.tracers.end(); ++tracer) {
+        double &m = (*tracer)->getSpeciesMass(timeIdx, speciesIdx);
+        const list<TracerMeshCell*> &cells = (*tracer)->getConnectedCells();
+        list<TracerMeshCell*>::const_iterator cell;
+        for (cell = cells.begin(); cell != cells.end(); ++cell) {
+            double weight = (*cell)->getWeight(*tracer)/(*cell)->getTotalRemapWeight();
+            m += (*cell)->getSpeciesMass(speciesIdx)*weight;
+        }
+    }
     
-void AdvectionManager::input(const string &longName,
-                             const LADY_SCALAR_FIELD &q) {
-//    const LADY_MESH &mesh = static_cast<const LADY_MESH&>(q.getMesh());
-//    const LADY_DOMAIN &domain = static_cast<const LADY_DOMAIN&>(mesh.getDomain());
-//    LADY_SPACE_COORD x(domain.getNumDim());
-//    LADY_BODY_COORD y(domain.getNumDim());
-//    tracerManager.registerTracer(longName);
-//    LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();
-//    for (; tracer != tracerManager.tracers.end(); ++tracer) {
-//        LADY_MESH_INDEX &idx = (*tracer)->getMeshIndex(0);
-//        // check which cells are covered by the tracer
-//        mesh.getGridCoord(CENTER, idx, x);
-//        (*tracer)->getBodyCoord(domain, 0, x, y);
-//        double f = (*tracer)->getShapeFunction(0, y);
-//    }
 }
 
 void AdvectionManager::output(const string &fileName,
                               const TimeLevelIndex<2> &oldTimeIdx) {
     tracerManager.output(fileName, oldTimeIdx);
-}
+    // output the tracer density on the mesh
     
+}
+
+void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
+                               const geomtk::RLLVelocityField &V) {
+    integrate_RK4(dt, newTimeIdx, V);
+    connectTracersAndMesh(newTimeIdx);
+}
+
+// -----------------------------------------------------------------------------
+// private member functions
+
 /*
     Trajectory equation:
 
@@ -51,22 +120,20 @@ void AdvectionManager::output(const string &fileName,
                                         -- = v,
                                         dt
 
-    Deformation equation:
+    Deformation equation (H is not computed from this equation):
 
                                       dH
                                       -- = ∇v H.
                                       dt
  */
 
-void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
-                               const LADY_VELOCITY_FIELD &V) {
+void AdvectionManager::integrate_RK4(double dt,
+                                     const TimeLevelIndex<2> &newTimeIdx,
+                                     const LADY_VELOCITY_FIELD &V) {
     TimeLevelIndex<2> oldTimeIdx = newTimeIdx-1;
     TimeLevelIndex<2> halfTimeIdx = newTimeIdx-0.5;
     const LADY_MESH &mesh = static_cast<const LADY_MESH&>(V.getMesh());
     const LADY_DOMAIN &domain = static_cast<const LADY_DOMAIN&>(mesh.getDomain());
-    if (regrid == NULL) {
-        regrid = new LADY_REGRID(mesh);
-    }
     double dt05 = 0.5*dt;
     LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();
     for (; tracer != tracerManager.tracers.end(); ++tracer) {
@@ -152,6 +219,55 @@ void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
         // ---------------------------------------------------------------------
         (*tracer)->updateH(domain, newTimeIdx);
         (*tracer)->selfInspect(domain, newTimeIdx);
+    }
+}
+
+void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
+    const LADY_MESH &mesh = static_cast<const LADY_MESH&>(tracerMeshCells->getMesh());
+    const LADY_DOMAIN &domain = static_cast<const LADY_DOMAIN&>(mesh.getDomain());
+    // -------------------------------------------------------------------------
+    // reset the connection between tracers and cells
+    LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();
+    for (; tracer != tracerManager.tracers.end(); ++tracer) {
+        (*tracer)->resetConnectedCells();
+    }
+    for (int i = 0; i < mesh.getTotalNumGrid(A_GRID); ++i) {
+        (*tracerMeshCells)(timeIdx, i).resetConnectedTracers();
+    }
+    // -------------------------------------------------------------------------
+    // call mlpack::range::RangeSearch to find out the neighbor cells of tracers
+    // and set the data structures for both cells and tracers for remapping
+    tracer = tracerManager.tracers.begin();
+    for (; tracer != tracerManager.tracers.end(); ++tracer) {
+        // =====================================================================
+        // search neighbor cells for the tracer
+        LADY_SPACE_COORD &x = (*tracer)->getX(timeIdx);
+        // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        // TODO: How to hide the mesh details? The transformation should be
+        //       moved into other low level place, and every coordinate
+        //       class should provide getCartCoord() method.
+        x.transformToCart(domain);
+        Searcher a(cellTree, NULL, cellCoords, x.getCartCoord(), true);
+        // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        double longAxisSize = (*tracer)->getShapeSize(timeIdx)(0);
+        mlpack::math::Range r(0.0, longAxisSize);
+        vector<vector<size_t> > neighbors;
+        vector<vector<double> > distances;
+        a.Search(r, neighbors, distances);
+        // =====================================================================
+        // set data structures for the tracer and its neighbor cells
+        for (int i = 0; i < neighbors[0].size(); ++i) {
+            int cellIdx = cellCoordsMap[neighbors[0][i]];
+            TracerMeshCell *cell = &(*tracerMeshCells)(timeIdx, cellIdx);
+            // calculate the tracer shape function for the cell
+            LADY_BODY_COORD y(domain.getNumDim());
+            (*tracer)->getBodyCoord(domain, timeIdx, cell->getCoord(), y);
+            double f = (*tracer)->getShapeFunction(timeIdx, y);
+            if (f > 0.0) {
+                cell->connect(*tracer, f);
+                (*tracer)->connect(cell);
+            }
+        }
     }
 }
 
