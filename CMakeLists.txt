@@ -12,35 +12,20 @@ cmake_minimum_required (VERSION 2.8)
 add_definitions(-DDEBUG)
 set (CMAKE_CXX_FLAGS "-std=c++11")
 
-option (USE_EXTERNAL_MLPACK "Use external library MLPACK" ON)
+option (USE_SYSTEM_MLPACK "Use system library MLPACK" ON)
+option (USE_SYSTEM_NLOPT "Use system library NLopt" ON)
 
+# ------------------------------------------------------------------------------
 project (lady CXX)
 
 # ------------------------------------------------------------------------------
 # external libraries
-# Armadillo
-find_package (Armadillo)
-if (NOT ARMADILLO_FOUND)
-    if (DEFINED ENV{ARMADILLO_ROOT})
-        message ("@@ Use user provided library Armadillo.")
-        message ("@@ ARMADILLO_ROOT = $ENV{ARMADILLO_ROOT}")
-        find_package (Armadillo HINTS $ENV{ARMADILLO_ROOT})
-    else ()
-        message (FATAL_ERROR
-            "CMake couldn't find library Armadillo! "
-            "If it have been installed and you know where it is, "
-            "set ARMADILLO_ROOT (e.g. in .bashrc) to it."
-        )
-    endif ()
-endif ()
-include_directories (${ARMADILLO_INCLUDE_DIRS})
-
 # MLPACK
-set (mlpack_internal_dir "${PROJECT_SOURCE_DIR}/external/mlpack-1.0.8")
-if (EXISTS ${mlpack_internal_dir} AND NOT ${USE_EXTERNAL_MLPACK})
+set (mlpack_internal_root "${PROJECT_SOURCE_DIR}/external/mlpack-1.0.8")
+if (EXISTS "${mlpack_internal_root}" AND NOT ${USE_SYSTEM_MLPACK})
     # use internal MLPACK
     message ("@@ Use internal library MLPACK!")
-    add_subdirectory ("${mlpack_internal_dir}")
+    add_subdirectory ("${mlpack_internal_root}")
     include_directories ("${PROJECT_BINARY_DIR}/include") # for MLPACK
 else ()
     # use user provided MLPACK
@@ -61,15 +46,44 @@ else ()
     endif ()
 endif ()
 
+# NLopt
+set (nlopt_internal_root "${PROJECT_SOURCE_DIR}/external/nlopt-2.4.1")
+if (EXISTS "${nlopt_internal_root}" AND NOT ${USE_SYSTEM_NLOPT})
+    # use internal NLopt
+    message ("@@ Use internal library NLopt!")
+    add_subdirectory ("${nlopt_internal_root}")
+else ()
+    # use user provided NLopt
+    if (DEFINED ENV{NLOPT_ROOT})
+        message ("@@ Use user provided library NLopt.")
+        message ("@@ NLOPT_ROOT = $ENV{NLOPT_ROOT}")
+        set (NLOPT_INCLUDE_DIR "$ENV{NLOPT_ROOT}/include")
+        set (NLOPT_LIBRARY_DIR "$ENV{NLOPT_ROOT}/lib")
+    else ()
+        message (FATAL_ERROR
+            "CMake couldn't find library NLopt! "
+            "If it have been installed and you know where it is, "
+            "set NLOPT_ROOT (e.g. in .bashrc) to it."
+        )
+    endif ()
+endif ()
+
 # GeoMTK
 add_subdirectory ("${PROJECT_SOURCE_DIR}/external/geomtk")
-include_directories (${GEOMTK_INCLUDE_DIRS})
-link_directories (${GEOMTK_LIBRARY_DIRS})
+include_directories (
+    ${NLOPT_INCLUDE_DIR}
+    ${GEOMTK_INCLUDE_DIRS}
+)
+link_directories (
+    ${NLOPT_LIBRARY_DIR}
+    ${GEOMTK_LIBRARY_DIRS}
+)
 
 # ------------------------------------------------------------------------------
 # source directory structure
 set (source_directories
     "${PROJECT_SOURCE_DIR}/src"
+    "${PROJECT_SOURCE_DIR}/src/Utils"
     "${PROJECT_SOURCE_DIR}/src/Parcel"
     "${PROJECT_SOURCE_DIR}/src/Advection"
     "${PROJECT_SOURCE_DIR}/src/Advection/Tracer"
@@ -92,7 +106,7 @@ endforeach ()
 # ------------------------------------------------------------------------------
 # library targets
 add_library (lady STATIC ${headers} ${sources})
-target_link_libraries (lady armadillo mlpack)
+target_link_libraries (lady mlpack nlopt)
 add_dependencies (lady geomtk)
 
 # ------------------------------------------------------------------------------

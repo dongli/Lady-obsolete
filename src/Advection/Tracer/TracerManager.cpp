@@ -89,7 +89,7 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
             H0(m, m) = 0.6*h.max(); // TODO: Could we set H this way?
         }
         (*tracer)->getSkeleton().init(domain, mesh);
-        (*tracer)->updateH(domain, initTimeIdx);
+        (*tracer)->updateDeformMatrix(domain, initTimeIdx);
     }
     // -------------------------------------------------------------------------
     REPORT_NOTICE(numTracer << " tracers are initialized.");

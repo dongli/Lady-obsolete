@@ -17,6 +17,10 @@ class Tracer : public Parcel {
 protected:
     TimeLevels<vector<double>, 2> ms; //>! species mass array
     TracerSkeleton *skeleton;
+
+    /**
+     *  Remapping parameters
+     */
     list<TracerMeshCell*> cells;
     double totalRemapWeight;
 public:
@@ -73,8 +77,8 @@ public:
      *  @param domain  the domain used for differencing coordinates.
      *  @param timeIdx the time level index.
      */
-    void updateH(const LADY_DOMAIN &domain,
-                 const TimeLevelIndex<2> &timeIdx);
+    void updateDeformMatrix(const LADY_DOMAIN &domain,
+                            const TimeLevelIndex<2> &timeIdx);
     
     /**
      *  Check the linear deformation transformation validity.

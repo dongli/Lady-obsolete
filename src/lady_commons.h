@@ -3,6 +3,7 @@
 
 #include "geomtk.h"
 #include "mlpack/methods/range_search/range_search.hpp"
+#include "nlopt.hpp"
 
 #include <iostream>
 #include <iomanip>

@@ -27,6 +27,9 @@ TracerSkeleton::~TracerSkeleton() {
             delete idx.getLevel(l)[i];
         }
     }
+    for (int i = 0; i < y.size(); ++i) {
+        delete y[i];
+    }
 }
     
 TracerSkeleton& TracerSkeleton::operator=(const TracerSkeleton &other) {

@@ -82,8 +82,8 @@ double Tracer::getTotalRemapWeight() const {
     return totalRemapWeight;
 }
 
-void Tracer::updateH(const LADY_DOMAIN &domain,
-                     const TimeLevelIndex<2> &timeIdx) {
+void Tracer::updateDeformMatrix(const LADY_DOMAIN &domain,
+                                const TimeLevelIndex<2> &timeIdx) {
     // fit "linear" deformation matrix to skeleton
     vector<LADY_BODY_COORD*> &ys = skeleton->getYs();
     vector<LADY_SPACE_COORD*> &xs = skeleton->getXs(timeIdx);
@@ -119,7 +119,10 @@ void Tracer::updateH(const LADY_DOMAIN &domain,
     (*H.getLevel(timeIdx))(1, 1) = (d1+d2)*0.5;
     // update inversion and determinant
     detH.getLevel(timeIdx) = det(*H.getLevel(timeIdx));
-    assert(detH.getLevel(timeIdx) > 0.0);
+    if (detH.getLevel(timeIdx) < 0.0) {
+        // the above simple calculation failed, use optimization
+        REPORT_ERROR("Under construction!");
+    }
     *invH.getLevel(timeIdx) = inv(*H.getLevel(timeIdx));
     updateShapeSize(domain, timeIdx);
 }

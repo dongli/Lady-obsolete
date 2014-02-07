@@ -90,16 +90,18 @@ void Parcel::updateShapeSize(const LADY_DOMAIN &domain,
                              const TimeLevelIndex<2> &timeIdx) {
     LADY_BODY_COORD y(domain.getNumDim());
     LADY_SPACE_COORD x(domain.getNumDim());
-    y(0) = 1.0;
-    y(1) = 0.0;
-    getSpaceCoord(domain, timeIdx, y, x);
-    double d1 = domain.calcDistance(x, *(q.getLevel(timeIdx)));
-    y(0) = 0.0;
-    y(1) = 1.0;
-    getSpaceCoord(domain, timeIdx, y, x);
-    double d2 = domain.calcDistance(x, *(q.getLevel(timeIdx)));
-    shapeSize.getLevel(timeIdx)(0) = fmax(d1, d2);
-    shapeSize.getLevel(timeIdx)(1) = fmin(d1, d2);
+    if (domain.getNumDim() == 2) {
+        y(0) = 1.0; y(1) = 0.0;
+        getSpaceCoord(domain, timeIdx, y, x);
+        double d1 = domain.calcDistance(x, *(q.getLevel(timeIdx)));
+        y(0) = 0.0; y(1) = 1.0;
+        getSpaceCoord(domain, timeIdx, y, x);
+        double d2 = domain.calcDistance(x, *(q.getLevel(timeIdx)));
+        shapeSize.getLevel(timeIdx)(0) = fmax(d1, d2);
+        shapeSize.getLevel(timeIdx)(1) = fmin(d1, d2);
+    } else {
+        REPORT_ERROR("Under construction!");
+    }
 }
 
 const vec::fixed<2>& Parcel::getShapeSize(const TimeLevelIndex<2> &timeIdx) const {

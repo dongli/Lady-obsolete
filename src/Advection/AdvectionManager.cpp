@@ -174,6 +174,7 @@ void AdvectionManager::integrate_RK4(double dt,
         // stage 4
         v = (v1+v2*2.0+v3*2.0+v4)/6.0;
         mesh.move(x0, dt, v, idx0, x1); idx1.locate(mesh, x1);
+        x1.transformToCart(domain);
         // ---------------------------------------------------------------------
         // update skeleton points of tracer
         TracerSkeleton &s = (*tracer)->getSkeleton();
@@ -215,9 +216,10 @@ void AdvectionManager::integrate_RK4(double dt,
             v = (v1+v2*2.0+v3*2.0+v4)/6.0;
             mesh.move(*x0s[i], dt, v, *idx0s[i], *x1s[i]);
             idx1s[i]->locate(mesh, *x1s[i]);
+            x1s[i]->transformToCart(domain);
         }
         // ---------------------------------------------------------------------
-        (*tracer)->updateH(domain, newTimeIdx);
+        (*tracer)->updateDeformMatrix(domain, newTimeIdx);
         (*tracer)->selfInspect(domain, newTimeIdx);
     }
 }
@@ -242,13 +244,7 @@ void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
         // =====================================================================
         // search neighbor cells for the tracer
         LADY_SPACE_COORD &x = (*tracer)->getX(timeIdx);
-        // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-        // TODO: How to hide the mesh details? The transformation should be
-        //       moved into other low level place, and every coordinate
-        //       class should provide getCartCoord() method.
-        x.transformToCart(domain);
         Searcher a(cellTree, NULL, cellCoords, x.getCartCoord(), true);
-        // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         double longAxisSize = (*tracer)->getShapeSize(timeIdx)(0);
         mlpack::math::Range r(0.0, longAxisSize);
         vector<vector<size_t> > neighbors;
