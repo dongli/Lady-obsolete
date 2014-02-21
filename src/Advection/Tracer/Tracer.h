@@ -8,6 +8,7 @@ namespace lady {
 
 class TracerSkeleton;
 class TracerMeshCell;
+class DeformMatrixFitting;
 
 /**
  *  This class describes the tracer that is used to be advected by external wind
@@ -15,7 +16,7 @@ class TracerMeshCell;
  */
 class Tracer : public Parcel {
 protected:
-    TimeLevels<vector<double>, 2> ms; //>! species mass array
+    vector<double> m; //>! species mass array
     TracerSkeleton *skeleton;
 
     /**
@@ -23,6 +24,12 @@ protected:
      */
     list<TracerMeshCell*> cells;
     double totalRemapWeight;
+
+    /**
+     *  Fitting parameters
+     */
+    friend class DeformMatrixFitting;
+    DeformMatrixFitting *deformMatrixFitting;
 public:
     Tracer(int numDim);
     virtual ~Tracer();
@@ -32,8 +39,9 @@ public:
      */
     void addSpecies();
 
-    double& getSpeciesMass(const TimeLevelIndex<2> &timeIdx, int speciesIdx);
-    double getSpeciesMass(const TimeLevelIndex<2> &timeIdx, int speciesIdx) const;
+    double& getSpeciesMass(int speciesIdx);
+    double getSpeciesMass(int speciesIdx) const;
+    void resetSpeciesMass();
 
     Tracer& operator=(const Tracer &other);
 
@@ -53,6 +61,9 @@ public:
      */
     TracerSkeleton& getSkeleton();
 
+    /**
+     *  Reset the connected cells to empty for later updating.
+     */
     void resetConnectedCells();
 
     /**
@@ -67,7 +78,7 @@ public:
      *
      *  @return The connected mesh cell list.
      */
-    const list<TracerMeshCell*>& getConnectedCells() const;
+    list<TracerMeshCell*>& getConnectedCells();
 
     double getTotalRemapWeight() const;
 
@@ -78,7 +89,8 @@ public:
      *  @param timeIdx the time level index.
      */
     void updateDeformMatrix(const LADY_DOMAIN &domain,
-                            const TimeLevelIndex<2> &timeIdx);
+                            const TimeLevelIndex<2> &timeIdx,
+                            bool isFirstTime = false);
     
     /**
      *  Check the linear deformation transformation validity.

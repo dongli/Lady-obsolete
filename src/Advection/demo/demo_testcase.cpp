@@ -1,7 +1,7 @@
 #include "lady.h"
 
-#define USE_DEFORMATION_TEST_CASE 1
-#define USE_SOLID_ROTATION_TEST_CASE 0
+#define USE_DEFORMATION_TEST_CASE 0
+#define USE_SOLID_ROTATION_TEST_CASE 1
 
 int main(int argc, const char *argv[])
 {
@@ -20,15 +20,12 @@ int main(int argc, const char *argv[])
     timeManager.init(testCase.getStartTime(), testCase.getEndTime(),
                      testCase.getStepSize());
 
-    advectionManager.init(testCase.getDomain(), testCase.getMesh(), 256);
+    advectionManager.init(testCase.getDomain(), testCase.getMesh(), 2048);
 
     testCase.calcInitCond(advectionManager);
     testCase.advance(timeManager.getSeconds(), oldTimeIdx);
 
-    advectionManager.output(o1.run("%3.3d", timeManager.getNumStep()),
-                            oldTimeIdx);
-//    testCase.outputVelocity(o2.run("%3.3d", timeManager.getNumStep()),
-//                            oldTimeIdx);
+    advectionManager.output(o1.run("%3.3d", timeManager.getNumStep()), oldTimeIdx);
     // -------------------------------------------------------------------------
     // integration loop
     while (!timeManager.isFinished()) {
@@ -39,10 +36,7 @@ int main(int argc, const char *argv[])
                                  testCase.getVelocityField());
         timeManager.advance();
         oldTimeIdx.shift();
-        advectionManager.output(o1.run("%3.3d", timeManager.getNumStep()),
-                                oldTimeIdx);
-//        testCase.outputVelocity(o2.run("%3.3d", timeManager.getNumStep()),
-//                                oldTimeIdx);
+        advectionManager.output(o1.run("%3.3d", timeManager.getNumStep()), oldTimeIdx);
     }
 
     return 0;

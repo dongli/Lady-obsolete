@@ -52,7 +52,6 @@ DeformationTestCase::DeformationTestCase(SubCase subCase, InitCond initCond) {
 DeformationTestCase::~DeformationTestCase() {
     delete mesh;
     delete domain;
-
     REPORT_OFFLINE;
 }
 
@@ -177,8 +176,42 @@ void DeformationTestCase::advance(double time,
 }
 
 void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
-
-//    AdvectionTestCase::calcInitCond(advectionManager);
+    LADY_SCALAR_FIELD *q;
+    TimeLevelIndex<2> timeIdx;
+    LADY_SPACE_COORD c0(2), c1(2);
+    c0(0) = M_PI*5.0/6.0; c0(1) = 0.0;
+    c1(0) = M_PI*7.0/6.0; c1(1) = 0.0;
+    if (initCond == COSINE_HILL) {
+        
+    } else if (initCond == SLOTTED_CYLINDERS) {
+        q = new LADY_SCALAR_FIELD(*mesh);
+        q->create(ScalarField, 2, A_GRID);
+        this->q.push_back(q);
+        double b = 0.1, c = 1.0, r = 0.5;
+        for (int j = 0; j < mesh->getNumGrid(1, CENTER); ++j) {
+            for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
+                LADY_SPACE_COORD x(2);
+                x(0) = mesh->getGridCoordComp(0, CENTER, i);
+                x(1) = mesh->getGridCoordComp(1, CENTER, j);
+                double r0 = domain->calcDistance(x, c0);
+                double r1 = domain->calcDistance(x, c1);
+                if ((r0 <= r && fabs(x(0)-c0(0)) >= r/6.0) ||
+                    (r1 <= r && fabs(x(0)-c1(0)) >= r/6.0))
+                    (*q)(timeIdx, i, j) = c;
+                else if (r0 <= r && fabs(x(0)-c0(0)) < r/6.0 &&
+                         x(1)-c0(1) < -5.0/12.0*r)
+                    (*q)(timeIdx, i, j) = c;
+                else if (r1 <= r && fabs(x(0)-c1(0)) < r/6.0 &&
+                         x(1)-c1(1) > 5.0/12.0*r)
+                    (*q)(timeIdx, i, j) = c;
+                else
+                    (*q)(timeIdx, i, j) = b;
+            }
+        }
+    } else if (initCond == GAUSSIAN_HILL) {
+        
+    }
+    AdvectionTestCase::calcInitCond(advectionManager);
 }
 
 }

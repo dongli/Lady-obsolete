@@ -61,23 +61,34 @@ TracerSkeleton& TracerSkeleton::operator=(const TracerSkeleton &other) {
                   (0,-1)
 */
 
-void TracerSkeleton::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh) {
+void TracerSkeleton::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
+                          vec sizes) {
     // set the body and initial spatial coordinates of skeleton points
     TimeLevelIndex<2> initTimeIdx;
-    double size = 1.0;
-    // -------------------------------------------------------------------------
-    // sphere domain
-    if (domain.getNumDim() == 2) {
-        (*y[0])() << -size <<   0.0 << arma::endr;
-        (*y[1])() <<   0.0 << -size << arma::endr;
-        (*y[2])() <<  size <<   0.0 << arma::endr;
-        (*y[3])() <<   0.0 <<  size << arma::endr;
-        for (int i = 0; i < y.size(); ++i) {
-            host->getSpaceCoord(domain, initTimeIdx, *y[i],
-                                *x.getLevel(initTimeIdx)[i]);
-            idx.getLevel(0)[i]->locate(mesh, *x.getLevel(0)[i]);
+    if (dynamic_cast<const geomtk::SphereDomain*>(&domain) != NULL) {
+        if (domain.getNumDim() == 2) {
+            (*y[0])() << -1.0 <<  0.0 << arma::endr;
+            (*y[1])() <<  0.0 << -1.0 << arma::endr;
+            (*y[2])() <<  1.0 <<  0.0 << arma::endr;
+            (*y[3])() <<  0.0 <<  1.0 << arma::endr;
+            const LADY_SPACE_COORD &x0 = host->getX(initTimeIdx);
+            double dtheta = PI2/y.size();
+            LADY_SPACE_COORD xr(domain.getNumDim());
+            for (int i = 0; i < y.size(); ++i) {
+                xr(0) = i*dtheta;
+                if ((*y[i])(1) != 0.0) {
+                    xr(1) = M_PI_2-sizes(0)/domain.getRadius();
+                } else if ((*y[i])(0) != 0.0) {
+                    xr(1) = M_PI_2-sizes(1)/domain.getRadius();
+                }
+                domain.rotateBack(x0, *x.getLevel(initTimeIdx)[i], xr);
+                x.getLevel(initTimeIdx)[i]->transformToCart(domain);
+                idx.getLevel(initTimeIdx)[i]->locate(mesh, *x.getLevel(initTimeIdx)[i]);
+            }
+        } else if (domain.getNumDim() == 3) {
+            REPORT_ERROR("Under construction!");
         }
-    } else if (domain.getNumDim() == 3) {
+    } else {
         REPORT_ERROR("Under construction!");
     }
 }

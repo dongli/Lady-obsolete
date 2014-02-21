@@ -18,7 +18,7 @@ public:
 
     TracerSkeleton& operator=(const TracerSkeleton &other);
 
-    void init(const LADY_DOMAIN &domain, const LADY_MESH &mesh);
+    void init(const LADY_DOMAIN &domain, const LADY_MESH &mesh, vec sizes);
 
     vector<LADY_SPACE_COORD*>& getXs(const TimeLevelIndex<2> &timeIdx);
     vector<LADY_BODY_COORD*>& getYs();

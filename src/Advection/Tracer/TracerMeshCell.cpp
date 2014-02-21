@@ -29,15 +29,21 @@ double TracerMeshCell::getVolume() const {
 }
 
 void TracerMeshCell::addSpecies() {
-    ms.push_back(0.0);
+    m.push_back(0.0);
 }
 
 double& TracerMeshCell::getSpeciesMass(int speciesIdx) {
-    return ms[speciesIdx];
+    return m[speciesIdx];
 }
 
 double TracerMeshCell::getSpeciesMass(int speciesIdx) const {
-    return ms[speciesIdx];
+    return m[speciesIdx];
+}
+
+void TracerMeshCell::resetSpeciesMass() {
+    for (int i = 0; i < m.size(); ++i) {
+        m[i] = 0.0;
+    }
 }
 
 void TracerMeshCell::resetConnectedTracers() {

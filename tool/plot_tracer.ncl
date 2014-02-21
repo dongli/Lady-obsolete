@@ -7,13 +7,16 @@ begin
     PI = atan(1.0)*4
     RAD = PI/180
 
-    fs = systemfunc("ls ../build/Debug/tracers.300.nc")
+    fs = systemfunc("for (( i = 90; i <= 120; ++i )); do printf '../build/Debug/tracers.%3.3d.nc\n' $i; done")
 
     f = addfile(fs(0), "r")
 
     num_time = dimsizes(fs)
-    dims = dimsizes(f->q)
+    dims = dimsizes(f->c)
     num_tracer = dims(0)
+    delete(dims)
+    dims = dimsizes(f->s2)
+    num_skel2 = dims(1)
     delete(dims)
 
     wks = gsn_open_wks("pdf", "tracers")
@@ -35,10 +38,10 @@ begin
     res_s2@gsMarkerSizeF = point_size
     res_s2@gsLineColor = "red"
 
-    ; check = ispan(115, 115, 1)
-    check = (/10/)
+    check = ispan(0, num_tracer-1, 1)
+    ;check = (/910/)
 
-    do l = 0, num_time-1, 2
+    do l = 0, num_time-1, 1
         system("echo time step: "+l)
         f = addfile(fs(l), "r")
         res_map = True
@@ -59,16 +62,16 @@ begin
         map = gsn_csm_map(wks, res_map)
         ; tracer centroid
         do i = 0, num_tracer-1
-            q = (/f->q(i,0),f->q(i,1)/)/RAD
+            c = (/f->c(i,0),f->c(i,1)/)/RAD
             if (isdefined("check") .and. any(check .eq. i)) then
                 res_tracer@gsMarkerColor = "blue"
             else
                 res_tracer@gsMarkerColor = "black"
             end if
-            gsn_polymarker(wks, map, q(0), q(1), res_tracer)
+            gsn_polymarker(wks, map, c(0), c(1), res_tracer)
         end do
         ; tracer shape
-        do i = 0, num_tracer-1
+        do i = 0, num_tracer-1, 5
             if (isdefined("check") .and. .not. any(check .eq. i)) then
                 continue
             end if
@@ -76,13 +79,10 @@ begin
                 s = f->s1(i,j,:)/RAD
                 gsn_polymarker(wks, map, s(0), s(1), res_s1)
             end do
-            x = new((/5,2/), double)
-            do j = 0, 3
-                x(j,:) = f->s2(i,j,:)/RAD
-                gsn_polymarker(wks, map, x(j,0), x(j,1), res_s2)
+            do j = 0, num_skel2-1
+                s = f->s2(i,j,:)/RAD
+                gsn_polymarker(wks, map, s(0), s(1), res_s2)
             end do
-            x(4,:) = x(0,:)
-            gsn_polyline(wks, map, x(:,0), x(:,1), res_s2)
         end do
         frame(wks)
     end do

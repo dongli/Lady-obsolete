@@ -6,6 +6,9 @@ AdvectionTestCase::AdvectionTestCase() {
 }
 
 AdvectionTestCase::~AdvectionTestCase() {
+    for (int i = 0; i < q.size(); ++i) {
+        delete q[i];
+    }
 }
 
 const LADY_DOMAIN& AdvectionTestCase::getDomain() const {
@@ -199,9 +202,7 @@ void AdvectionTestCase::calcInitCond(AdvectionManager &advectionManager) {
         advectionManager.registerTracer(name.run("%d", i), "N/A",
                                         brief.run("%d", i));
     }
-    for (int i = 0; i < q.size(); ++i) {
-        advectionManager.input(name.run("%d", i), *(q[i]));
-    }
+    advectionManager.input(q);
 }
     
 void AdvectionTestCase::calcSolution(double time, LADY_SCALAR_FIELD &q) {

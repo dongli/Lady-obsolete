@@ -70,44 +70,153 @@ void AdvectionManager::registerTracer(const string &name, const string &units,
     }
 }
 
-void AdvectionManager::input(const string &name, const LADY_SCALAR_FIELD &q) {
-    int speciesIdx = tracerManager.getSpeciesIndex(name);
+void AdvectionManager::input(vector<LADY_SCALAR_FIELD*> &q) {
+    assert(q.size() == tracerManager.getNumSpecies());
     TimeLevelIndex<2> timeIdx;
     assert(timeIdx.get() == 0);
+    const LADY_MESH &mesh = static_cast<const LADY_MESH&>(tracerMeshCells->getMesh());
     // -------------------------------------------------------------------------
     // transfer the input tracer density field into internal tracer mass field
-    assert(q.getMesh().getTotalNumGrid(A_GRID) ==
-           tracerMeshCells->getMesh().getTotalNumGrid(A_GRID));
-    for (int i = 0; i < q.getMesh().getTotalNumGrid(A_GRID); ++i) {
-        double &m = (*tracerMeshCells)(timeIdx, i).getSpeciesMass(speciesIdx);
-        m = q(timeIdx, i)*(*tracerMeshCells)(timeIdx, i).getVolume();
+    for (int s = 0; s < q.size(); ++s) {
+        assert(q[s]->getMesh().getTotalNumGrid(A_GRID) ==
+               tracerMeshCells->getMesh().getTotalNumGrid(A_GRID));
+        for (int i = 0; i < mesh.getTotalNumGrid(A_GRID); ++i) {
+            double &m = (*tracerMeshCells)(timeIdx, i).getSpeciesMass(s);
+            m = (*q[s])(timeIdx, i)*(*tracerMeshCells)(timeIdx, i).getVolume();
+        }
     }
     // -------------------------------------------------------------------------
     // transfer the tracer mass from cells to tracers
-    LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();
-    for (; tracer != tracerManager.tracers.end(); ++tracer) {
-        double &m = (*tracer)->getSpeciesMass(timeIdx, speciesIdx);
-        const list<TracerMeshCell*> &cells = (*tracer)->getConnectedCells();
-        list<TracerMeshCell*>::const_iterator cell;
-        for (cell = cells.begin(); cell != cells.end(); ++cell) {
-            double weight = (*cell)->getWeight(*tracer)/(*cell)->getTotalRemapWeight();
-            m += (*cell)->getSpeciesMass(speciesIdx)*weight;
-        }
-    }
-    
+    remapMeshToTracers(timeIdx);
+    // TODO: The mass on cells could be different after remapping from tracers.
+    remapTracersToMesh(timeIdx);
 }
 
 void AdvectionManager::output(const string &fileName,
                               const TimeLevelIndex<2> &oldTimeIdx) {
     tracerManager.output(fileName, oldTimeIdx);
     // output the tracer density on the mesh
+    const LADY_MESH &mesh = static_cast<const LADY_MESH&>(tracerMeshCells->getMesh());
+    const LADY_DOMAIN &domain = static_cast<const LADY_DOMAIN&>(mesh.getDomain());
+    int ncId, lonDimId, latDimId;
+    int lonVarId, latVarId;
+    int dimIds[domain.getNumDim()];
+    int qVarIds[tracerManager.getNumSpecies()];
+    vec lon, lat;
     
+    if (nc_open(fileName.c_str(), NC_WRITE, &ncId) != NC_NOERR) {
+        REPORT_ERROR("Failed to open " << fileName << "!");
+    }
+    if (nc_redef(ncId) != NC_NOERR) {
+        
+    }
+    // -------------------------------------------------------------------------
+    // define dimensions
+    // =========================================================================
+    // longitude dimension
+    if (nc_def_dim(ncId, "lon", mesh.getNumGrid(0, CENTER), &lonDimId)
+        != NC_NOERR) {
+        REPORT_ERROR("Failed to define dimension lon!");
+    }
+    if (nc_def_var(ncId, "lon", NC_DOUBLE, 1, &lonDimId, &lonVarId)
+        != NC_NOERR) {
+        REPORT_ERROR("Failed to define coordinate variable lon!");
+    }
+    if (nc_put_att(ncId, lonVarId, "long_name", NC_CHAR, 9, "longitude")
+        != NC_NOERR) {
+        REPORT_ERROR("Failed to put attribute to variable lon!");
+    }
+    if (nc_put_att(ncId, lonVarId, "units", NC_CHAR, 12, "degrees_east")
+        != NC_NOERR) {
+        REPORT_ERROR("Failed to put attribute to variable lon!");
+    }
+    // =========================================================================
+    // latitude dimension
+    if (nc_def_dim(ncId, "lat", mesh.getNumGrid(1, CENTER), &latDimId)
+        != NC_NOERR) {
+        REPORT_ERROR("Failed to define dimension lat!");
+    }
+    if (nc_def_var(ncId, "lat", NC_DOUBLE, 1, &latDimId, &latVarId)
+        != NC_NOERR) {
+        REPORT_ERROR("Failed to define coordinate variable lat!");
+    }
+    if (nc_put_att(ncId, latVarId, "long_name", NC_CHAR, 8, "latitude")
+        != NC_NOERR) {
+        REPORT_ERROR("Failed to put attribute to variable lat!");
+    }
+    if (nc_put_att(ncId, latVarId, "units", NC_CHAR, 13, "degrees_north")
+        != NC_NOERR) {
+        REPORT_ERROR("Failed to put attribute to variable lat!");
+    }
+    // =========================================================================
+    dimIds[0] = latDimId;
+    dimIds[1] = lonDimId;
+    for (int i = 0; i < tracerManager.getNumSpecies(); ++i) {
+        const TracerSpeciesInfo &speciesInfo = tracerManager.getSpeciesInfo(i);
+        char str[100];
+        sprintf(str, "%s", speciesInfo.getName().c_str());
+        if (nc_def_var(ncId, str, NC_DOUBLE, domain.getNumDim(), dimIds, &qVarIds[i])
+            != NC_NOERR) {
+            REPORT_ERROR("Failed to define variable " << str << "!");
+        }
+        if (nc_put_att(ncId, qVarIds[i], "long_name", NC_CHAR, speciesInfo.getBrief().length(), speciesInfo.getBrief().c_str())
+            != NC_NOERR) {
+            
+        }
+        if (nc_put_att(ncId, qVarIds[i], "units", NC_CHAR, speciesInfo.getUnits().length(), speciesInfo.getUnits().c_str())
+            != NC_NOERR) {
+            
+        }
+    }
+    if (nc_enddef(ncId) != NC_NOERR) {
+        
+    }
+    // -------------------------------------------------------------------------
+    // put variables
+    // =========================================================================
+    lon = mesh.getGridCoords(0, CENTER)/RAD;
+    lat = mesh.getGridCoords(1, CENTER)/RAD;
+    if (nc_put_var(ncId, lonVarId, lon.memptr()) != NC_NOERR) {
+        REPORT_ERROR("Failed to put coordinate variable lon!");
+    }
+    if (nc_put_var(ncId, latVarId, lat.memptr()) != NC_NOERR) {
+        REPORT_ERROR("Failed to put coordinate variable lat!");
+    }
+    double *x  = new double[mesh.getNumGrid(0, CENTER)*mesh.getNumGrid(1, CENTER)];
+    for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+        for (int i = 0; i < mesh.getTotalNumGrid(A_GRID); ++i) {
+            x[i] = (*tracerMeshCells)(oldTimeIdx, i).getSpeciesMass(s)/
+                   (*tracerMeshCells)(oldTimeIdx, i).getVolume();
+        }
+        if (nc_put_var(ncId, qVarIds[s], x) != NC_NOERR) {
+            
+        }
+    }
+    delete [] x;
+    if (nc_close(ncId) != NC_NOERR) {
+        
+    }
+}
+    
+void AdvectionManager::diagnose(const TimeLevelIndex<2> &timeIdx) {
+    // print total mass for each species
+    for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+        double totalMass = 0.0;
+        for (int i = 0; i < tracerMeshCells->getMesh().getTotalNumGrid(A_GRID); ++i) {
+            totalMass += (*tracerMeshCells)(timeIdx, i).getSpeciesMass(s);
+        }
+        REPORT_NOTICE("Total mass of " <<
+                      tracerManager.getSpeciesInfo(s).getName() << " is " <<
+                      setw(30) << setprecision(20) << totalMass << ".");
+    }
 }
 
 void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
                                const geomtk::RLLVelocityField &V) {
     integrate_RK4(dt, newTimeIdx, V);
     connectTracersAndMesh(newTimeIdx);
+    remapTracersToMesh(newTimeIdx);
+    diagnose(newTimeIdx);
 }
 
 // -----------------------------------------------------------------------------
@@ -220,7 +329,7 @@ void AdvectionManager::integrate_RK4(double dt,
         }
         // ---------------------------------------------------------------------
         (*tracer)->updateDeformMatrix(domain, newTimeIdx);
-        (*tracer)->selfInspect(domain, newTimeIdx);
+        //(*tracer)->selfInspect(domain, newTimeIdx);
     }
 }
 
@@ -260,23 +369,29 @@ void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
             (*tracer)->getBodyCoord(domain, timeIdx, cell->getCoord(), y);
             double f = (*tracer)->getShapeFunction(timeIdx, y);
             if (f > 0.0) {
-                cell->connect(*tracer, f);
+                // the cell volume is also needed to be considered
+                cell->connect(*tracer, f*cell->getVolume());
                 (*tracer)->connect(cell);
             }
         }
+        assert((*tracer)->getConnectedCells().size() != 0);
 #define CHECK_NEIGHBORS 0
 #if CHECK_NEIGHBORS == 1
         std::ofstream file;
         file.open("neighbors.txt");
         file << "p0 = (/" << (*tracer)->getX(timeIdx)(0) << "," << (*tracer)->getX(timeIdx)(1) << "/)" << endl;
-        file << "ngb = new((/" << neighbors[0].size() << ",2/), double)" << endl;
+        file << "ngb = new((/" << (*tracer)->getConnectedCells().size() << ",2/), double)" << endl;
         for (int m = 0; m < 2; ++m) {
             file << "ngb(:," << m << ") = (/";
-            for (int i = 0; i < neighbors.size(); ++i) {
-                for (int j = 0; j < neighbors[i].size()-1; ++j) {
-                    file << (*tracerMeshCells)(0, cellCoordsMap[neighbors[i][j]]).getCoord()(m) << ",";
+            list<TracerMeshCell*>::iterator cell = (*tracer)->getConnectedCells().begin();
+            int i = 0;
+            for (; cell != (*tracer)->getConnectedCells().end(); ++cell) {
+                i++;
+                if (i != (*tracer)->getConnectedCells().size()) {
+                    file << (*cell)->getCoord()(m) << ",";
+                } else {
+                    file << (*cell)->getCoord()(m) << "/)" << endl;
                 }
-                file << (*tracerMeshCells)(0, cellCoordsMap[neighbors[i][neighbors[i].size()-1]]).getCoord()(m) << "/)" << endl;
             }
         }
         int n = 100;
@@ -305,6 +420,43 @@ void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
         file.close();
         CHECK_POINT
 #endif
+    }
+}
+
+void AdvectionManager::remapMeshToTracers(const TimeLevelIndex<2> &timeIdx) {
+    LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();
+    for (; tracer != tracerManager.tracers.end(); ++tracer) {
+        (*tracer)->resetSpeciesMass();
+    }
+    tracer = tracerManager.tracers.begin();
+    for (; tracer != tracerManager.tracers.end(); ++tracer) {
+        const list<TracerMeshCell*> &cells = (*tracer)->getConnectedCells();
+        assert(cells.size() != 0);
+        list<TracerMeshCell*>::const_iterator cell;
+        for (cell = cells.begin(); cell != cells.end(); ++cell) {
+            double weight = (*cell)->getWeight(*tracer)/(*cell)->getTotalRemapWeight();
+            for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+                double &m = (*tracer)->getSpeciesMass(s);
+                m += (*cell)->getSpeciesMass(s)*weight;
+            }
+        }
+    }
+}
+
+void AdvectionManager::remapTracersToMesh(const TimeLevelIndex<2> &timeIdx) {
+    for (int i = 0; i < tracerMeshCells->getMesh().getTotalNumGrid(A_GRID); ++i) {
+        (*tracerMeshCells)(timeIdx, i).resetSpeciesMass();
+    }
+    LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();
+    for (; tracer != tracerManager.tracers.end(); ++tracer) {
+        list<TracerMeshCell*>::iterator cell = (*tracer)->getConnectedCells().begin();
+        for (; cell != (*tracer)->getConnectedCells().end(); ++cell) {
+            double weight = (*cell)->getWeight(*tracer)/(*tracer)->getTotalRemapWeight();
+            for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+                double &m = (*cell)->getSpeciesMass(s);
+                m += (*tracer)->getSpeciesMass(s)*weight;
+            }
+        }
     }
 }
 

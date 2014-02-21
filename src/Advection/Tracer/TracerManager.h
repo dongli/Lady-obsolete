@@ -32,7 +32,23 @@ public:
     void registerTracer(const string &name, const string &units,
                         const string &brief);
 
+    /**
+     *  Return the tracer species index based on the given name.
+     *
+     *  @param name the tracer species name.
+     *
+     *  @return The species index.
+     */
     int getSpeciesIndex(const string &name) const;
+
+    /**
+     *  Get the number of tracer species.
+     *
+     *  @return The species number.
+     */
+    int getNumSpecies() const;
+    
+    const TracerSpeciesInfo& getSpeciesInfo(int speciesIdx) const;
 
     /**
      *  Output tracers on old time level into netCDF file.

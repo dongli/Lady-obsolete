@@ -141,7 +141,7 @@ void SolidRotationTestCase::advance(double time,
 
 void SolidRotationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     LADY_SCALAR_FIELD *q = new LADY_SCALAR_FIELD(*mesh);
-    q->create(ScalarField, CENTER, CENTER);
+    q->create(ScalarField, 2, A_GRID);
     this->q.push_back(q);
     calcSolution(0, *q);
     AdvectionTestCase::calcInitCond(advectionManager);
@@ -150,14 +150,13 @@ void SolidRotationTestCase::calcInitCond(AdvectionManager &advectionManager) {
 void SolidRotationTestCase::calcSolution(double time, LADY_SCALAR_FIELD &q) {
     TimeLevelIndex<2> timeIdx;
     (*cr0)(0) += angleSpeed*time;
-    domain->rotate(*axisPole, *c0, *cr0);
-    
+    domain->rotateBack(*axisPole, *c0, *cr0);
     for (int j = 0; j < mesh->getNumGrid(1, CENTER); ++j) {
         for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
             double lon = mesh->getGridCoordComp(0, CENTER, i);
             double sinLat = mesh->getSinLat(CENTER, j);
-            double sinLat2 = mesh->getSinLat2(CENTER, j);
-            double d = domain->calcDistance(*c0, lon, sinLat, sinLat2);
+            double cosLat = mesh->getCosLat(CENTER, j);
+            double d = domain->calcDistance(*c0, lon, sinLat, cosLat);
             if (d < R) {
                 q(timeIdx, i, j) = H0*(1+cos(M_PI*d/R))/2;
             } else {

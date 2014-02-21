@@ -10,7 +10,7 @@ class TracerMeshCell {
 protected:
     LADY_SPACE_COORD *x; //>! center grid coordinate
     double volume; //>! cell volume for converting density and mass
-    vector<double> ms; //>! species mass array
+    vector<double> m; //>! species mass array
     unordered_map<Tracer*, double> tracers; //>! tracer-weight map
     double totalRemapWeight;
 public:
@@ -53,7 +53,12 @@ public:
     double& getSpeciesMass(int speciesIdx);
     double getSpeciesMass(int speciesIdx) const;
 
+    /**
+     *  Reset the connected tracer to empty for later updating.
+     */
     void resetConnectedTracers();
+
+    void resetSpeciesMass();
 
     void connect(Tracer *tracer, double weight);
 

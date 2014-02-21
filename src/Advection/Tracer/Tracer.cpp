@@ -1,6 +1,7 @@
 #include "Tracer.h"
 #include "TracerSkeleton.h"
 #include "TracerMeshCell.h"
+#include "DeformMatrixFitting.h"
 
 namespace lady {
 
@@ -9,6 +10,7 @@ Tracer::Tracer(int numDim) : Parcel(numDim) {
         idx.getLevel(l) = new LADY_MESH_INDEX(numDim);
     }
     skeleton = new TracerSkeleton(this, numDim);
+    deformMatrixFitting = NULL;
 }
 
 Tracer::~Tracer() {
@@ -16,32 +18,33 @@ Tracer::~Tracer() {
         delete idx.getLevel(l);
     }
     delete skeleton;
+    if (deformMatrixFitting != NULL) {
+        delete deformMatrixFitting;
+    }
 }
     
 void Tracer::addSpecies() {
-    for (int l = 0; l < ms.getNumLevel(); ++l) {
-        ms.getLevel(l).push_back(0.0);
-    }
+    m.push_back(0.0);
 }
 
-double& Tracer::getSpeciesMass(const TimeLevelIndex<2> &timeIdx, int i) {
+double& Tracer::getSpeciesMass(int s) {
 #ifdef DEBUG
-    if (i >= ms.getLevel(timeIdx).size()) {
-        REPORT_ERROR("Species index " << i << " exceeds range [0," <<
-                     ms.getLevel(timeIdx).size()-1 << "]!");
+    if (s >= m.size()) {
+        REPORT_ERROR("Species index " << s << " exceeds range [0," <<
+                     m.size()-1 << "]!");
     }
 #endif
-    return ms.getLevel(timeIdx)[i];
+    return m[s];
 }
 
-double Tracer::getSpeciesMass(const TimeLevelIndex<2> &timeIdx, int i) const {
+double Tracer::getSpeciesMass(int s) const {
 #ifdef DEBUG
-    if (i >= ms.getLevel(timeIdx).size()) {
-        REPORT_ERROR("Species index " << i << " exceeds range [0," <<
-                     ms.getLevel(timeIdx).size()-1 << "]!");
+    if (s >= m.size()) {
+        REPORT_ERROR("Species index " << s << " exceeds range [0," <<
+                     m.size()-1 << "]!");
     }
 #endif
-    return ms.getLevel(timeIdx)[i];
+    return m[s];
 }
 
 Tracer& Tracer::operator=(const Tracer &other) {
@@ -68,12 +71,18 @@ void Tracer::resetConnectedCells() {
     totalRemapWeight = 0.0;
 }
 
+void Tracer::resetSpeciesMass() {
+    for (int s = 0; s < m.size(); ++s) {
+        m[s] = 0.0;
+    }
+}
+
 void Tracer::connect(TracerMeshCell *cell) {
     cells.push_back(cell);
     totalRemapWeight += cell->getWeight(this);
 }
 
-const list<TracerMeshCell*>& Tracer::getConnectedCells() const {
+list<TracerMeshCell*>& Tracer::getConnectedCells() {
     return cells;
 }
 
@@ -83,46 +92,21 @@ double Tracer::getTotalRemapWeight() const {
 }
 
 void Tracer::updateDeformMatrix(const LADY_DOMAIN &domain,
-                                const TimeLevelIndex<2> &timeIdx) {
-    // fit "linear" deformation matrix to skeleton
-    vector<LADY_BODY_COORD*> &ys = skeleton->getYs();
-    vector<LADY_SPACE_COORD*> &xs = skeleton->getXs(timeIdx);
-    vec dx0, dx1, dx2, dx3;
-    double a1, a2, b1, b2, c1, c2, d1, d2;
-    if (idx.getLevel(timeIdx)->isOnPole()) {
-        // TODO: Make a tag to indicate whether PS coordinate is set or not.
-        q.getLevel(timeIdx)->transformToPS(domain); //>! ensure q is ready
-        for (int i = 0; i < xs.size(); ++i) {
-            xs[i]->transformToPS(domain);
+                                const TimeLevelIndex<2> &timeIdx,
+                                bool isFirstTime) {
+    if (isFirstTime) {
+        deformMatrixFitting = new DeformMatrixFitting(domain, this);
+        *q.getLevel(1) = *q.getLevel(0);
+        *idx.getLevel(1) = *idx.getLevel(0);
+        for (int i = 0; i < skeleton->getYs().size(); ++i) {
+            *skeleton->getXs(timeIdx+1)[i] = *skeleton->getXs(timeIdx)[i];
         }
-        dx0 = xs[0]->getPSCoord()-q.getLevel(timeIdx)->getPSCoord();
-        dx1 = xs[2]->getPSCoord()-q.getLevel(timeIdx)->getPSCoord();
-        dx2 = xs[1]->getPSCoord()-q.getLevel(timeIdx)->getPSCoord();
-        dx3 = xs[3]->getPSCoord()-q.getLevel(timeIdx)->getPSCoord();
+        deformMatrixFitting->fit(timeIdx+1, this);
+        *H.getLevel(0) = *H.getLevel(1);
     } else {
-        dx0 = domain.diffCoord(*xs[0], *q.getLevel(timeIdx));
-        dx1 = domain.diffCoord(*xs[2], *q.getLevel(timeIdx));
-        dx2 = domain.diffCoord(*xs[1], *q.getLevel(timeIdx));
-        dx3 = domain.diffCoord(*xs[3], *q.getLevel(timeIdx));
+        deformMatrixFitting->fit(timeIdx, this);
     }
-    a1 = dx0(0)/(*ys[0])(0);
-    a2 = dx1(0)/(*ys[2])(0);
-    b1 = dx2(0)/(*ys[1])(1);
-    b2 = dx3(0)/(*ys[3])(1);
-    c1 = dx0(1)/(*ys[0])(0);
-    c2 = dx1(1)/(*ys[2])(0);
-    d1 = dx2(1)/(*ys[1])(1);
-    d2 = dx3(1)/(*ys[3])(1);
-    (*H.getLevel(timeIdx))(0, 0) = (a1+a2)*0.5;
-    (*H.getLevel(timeIdx))(0, 1) = (b1+b2)*0.5;
-    (*H.getLevel(timeIdx))(1, 0) = (c1+c2)*0.5;
-    (*H.getLevel(timeIdx))(1, 1) = (d1+d2)*0.5;
-    // update inversion and determinant
     detH.getLevel(timeIdx) = det(*H.getLevel(timeIdx));
-    if (detH.getLevel(timeIdx) < 0.0) {
-        // the above simple calculation failed, use optimization
-        REPORT_ERROR("Under construction!");
-    }
     *invH.getLevel(timeIdx) = inv(*H.getLevel(timeIdx));
     updateShapeSize(domain, timeIdx);
 }

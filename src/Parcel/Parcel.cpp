@@ -55,26 +55,28 @@ LADY_MATRIX& Parcel::getInvH(const TimeLevelIndex<2> &timeIdx) {
 void Parcel::getSpaceCoord(const LADY_DOMAIN &domain,
                            const TimeLevelIndex<2> &timeIdx,
                            const LADY_BODY_COORD &y, LADY_SPACE_COORD &x) {
-    // TODO: How to hide sphere domain details?
-    if (idx.getLevel(timeIdx)->isOnPole()) {
-        x.getPSCoord() = q.getLevel(timeIdx)->getPSCoord()+(*H.getLevel(timeIdx))*y();
-        x.transformFromPS(domain, idx.getLevel(timeIdx)->getPole());
+    if (dynamic_cast<const geomtk::SphereDomain*>(&domain) != NULL) {
+        // In sphere domain, we calculate deformation matrix stuffs on local
+        // stereographic projection of tracer centroid.
+        vec xs(domain.getNumDim());
+        xs = (*H.getLevel(timeIdx))*y();
+        domain.projectBack(geomtk::SphereDomain::STEREOGRAPHIC,
+                           *q.getLevel(timeIdx), x, xs);
     } else {
-        x() = (*q.getLevel(timeIdx))()+(*H.getLevel(timeIdx))*y();
-        domain.check(x);
+        REPORT_ERROR("Under construction!");
     }
 }
 
 void Parcel::getBodyCoord(const LADY_DOMAIN &domain,
                           const TimeLevelIndex<2> &timeIdx,
                           const LADY_SPACE_COORD &x, LADY_BODY_COORD &y) {
-    // TODO: How to hide sphere domain details?
-    if (idx.getLevel(timeIdx)->isOnPole()) {
-        y() = (*invH.getLevel(timeIdx))*(x.getPSCoord()-
-                                         q.getLevel(timeIdx)->getPSCoord());
+    if (dynamic_cast<const geomtk::SphereDomain*>(&domain) != NULL) {
+        vec xs(domain.getNumDim());
+        domain.project(geomtk::SphereDomain::STEREOGRAPHIC,
+                       *q.getLevel(timeIdx), x, xs);
+        y() = (*invH.getLevel(timeIdx))*xs;
     } else {
-        vec dx = domain.diffCoord(x, *q.getLevel(timeIdx));
-        y() = (*invH.getLevel(timeIdx))*dx;
+        REPORT_ERROR("Under construction!");
     }
 }
     

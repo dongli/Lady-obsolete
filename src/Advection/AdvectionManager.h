@@ -56,7 +56,7 @@ public:
      *  @param name the name of the tracer.
      *  @param q    the input scalar field.
      */
-    void input(const string &name, const LADY_SCALAR_FIELD &q);
+    void input(vector<LADY_SCALAR_FIELD*> &q);
 
     /**
      *  Output tracers on old time level into netCDF file.
@@ -65,6 +65,8 @@ public:
      *  @param newTimeIdx the new time level index.
      */
     void output(const string &fileName, const TimeLevelIndex<2> &newTimeIdx);
+
+    void diagnose(const TimeLevelIndex<2> &timeIdx);
 
     /**
      *  Advect tracers one time step forward, and remap tracers onto mesh cells.
@@ -93,6 +95,20 @@ private:
      *  @param timeIdx the time level index.
      */
     void connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx);
+
+    /**
+     *  Remap the tracer mass from mesh cells to tracers.
+     *
+     *  @param timeIdx the time level index.
+     */
+    void remapMeshToTracers(const TimeLevelIndex<2> &timeIdx);
+    
+    /**
+     *  Remap the tracer mass from tracers to mesh cells.
+     *
+     *  @param timeIdx the time level index.
+     */
+    void remapTracersToMesh(const TimeLevelIndex<2> &timeIdx);
 };
 }
 

@@ -15,9 +15,9 @@ public:
                       const string &brief);
     ~TracerSpeciesInfo();
 
-    const string &getName() { return name; }
-    const string &getUnits() { return units; }
-    const string &getBrief() { return brief; }
+    const string &getName() const { return name; }
+    const string &getUnits() const { return units; }
+    const string &getBrief() const { return brief; }
 };
 
 }
