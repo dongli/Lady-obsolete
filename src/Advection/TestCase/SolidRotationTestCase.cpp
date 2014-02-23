@@ -140,15 +140,16 @@ void SolidRotationTestCase::advance(double time,
 }
 
 void SolidRotationTestCase::calcInitCond(AdvectionManager &advectionManager) {
-    LADY_SCALAR_FIELD *q = new LADY_SCALAR_FIELD(*mesh);
-    q->create(ScalarField, 2, A_GRID);
-    this->q.push_back(q);
-    calcSolution(0, *q);
+    q0 = new LADY_SCALAR_FIELD(*mesh);
+    q0->create(ScalarField, 2, A_GRID);
+    this->q.push_back(q0);
+    TimeLevelIndex<2> initTimeIdx;
+    calcSolution(0, initTimeIdx, *q0);
     AdvectionTestCase::calcInitCond(advectionManager);
 }
 
-void SolidRotationTestCase::calcSolution(double time, LADY_SCALAR_FIELD &q) {
-    TimeLevelIndex<2> timeIdx;
+void SolidRotationTestCase::calcSolution(double time, TimeLevelIndex<2> &timeIdx,
+                                         LADY_SCALAR_FIELD &q) {
     (*cr0)(0) += angleSpeed*time;
     domain->rotateBack(*axisPole, *c0, *cr0);
     for (int j = 0; j < mesh->getNumGrid(1, CENTER); ++j) {

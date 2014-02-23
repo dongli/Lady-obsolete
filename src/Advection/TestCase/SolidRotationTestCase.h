@@ -10,6 +10,7 @@ protected:
     double angleSpeed, U0, alpha;
     LADY_SPACE_COORD *axisPole, *c0, *cr0;
     double R, H0;
+    LADY_SCALAR_FIELD *q0;
 public:
     SolidRotationTestCase();
     virtual ~SolidRotationTestCase();
@@ -19,7 +20,8 @@ public:
     double getStepSize() const;
 
     void calcInitCond(AdvectionManager &advectionManager);
-    void calcSolution(double time, LADY_SCALAR_FIELD &q);
+    void calcSolution(double time, TimeLevelIndex<2> &timeIdx,
+                      LADY_SCALAR_FIELD &q);
     void advance(double time, const TimeLevelIndex<2> &timeIdx);
 };
 

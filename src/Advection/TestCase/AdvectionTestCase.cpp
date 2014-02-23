@@ -205,7 +205,8 @@ void AdvectionTestCase::calcInitCond(AdvectionManager &advectionManager) {
     advectionManager.input(q);
 }
     
-void AdvectionTestCase::calcSolution(double time, LADY_SCALAR_FIELD &q) {
+void AdvectionTestCase::calcSolution(double time, TimeLevelIndex<2> &timeIdx,
+                                     LADY_SCALAR_FIELD &q) {
     REPORT_ERROR("calcSolution is not available!");
 }
 

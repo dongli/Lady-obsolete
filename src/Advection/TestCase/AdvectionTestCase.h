@@ -60,16 +60,18 @@ public:
     /**
      *  Calculate the solution of the test case if any.
      *
-     *  @param time the time in seconds.
-     *  @param q    the output solution.
+     *  @param time    the time in seconds.
+     *  @param timeIdx the time level index.
+     *  @param q       the output solution.
      */
-    virtual void calcSolution(double time, LADY_SCALAR_FIELD &q);
+    virtual void calcSolution(double time, TimeLevelIndex<2> &timeIdx,
+                              LADY_SCALAR_FIELD &q);
 
     /**
      *  Advance the test case one time step.
      *
      *  @param time    the time in seconds.
-     *  @param timeIdx the time level index
+     *  @param timeIdx the time level index.
      */
     virtual void advance(double time, const TimeLevelIndex<2> &timeIdx) = 0;
 };

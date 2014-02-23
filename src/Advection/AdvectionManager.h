@@ -40,6 +40,10 @@ public:
      */
     void init(const LADY_DOMAIN &domain, const LADY_MESH &mesh, int numParcel);
 
+    const LADY_FIELD<TracerMeshCell>& getTracerMeshCells() const {
+        return *tracerMeshCells;
+    }
+
     /**
      *  Register a tracer species.
      *

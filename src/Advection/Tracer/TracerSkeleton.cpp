@@ -62,7 +62,7 @@ TracerSkeleton& TracerSkeleton::operator=(const TracerSkeleton &other) {
 */
 
 void TracerSkeleton::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
-                          vec sizes) {
+                          double size) {
     // set the body and initial spatial coordinates of skeleton points
     TimeLevelIndex<2> initTimeIdx;
     if (dynamic_cast<const geomtk::SphereDomain*>(&domain) != NULL) {
@@ -76,11 +76,7 @@ void TracerSkeleton::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
             LADY_SPACE_COORD xr(domain.getNumDim());
             for (int i = 0; i < y.size(); ++i) {
                 lon = i*dtheta;
-                if ((*y[i])(1) != 0.0) {
-                    lat = M_PI_2-sizes(0)/domain.getRadius();
-                } else if ((*y[i])(0) != 0.0) {
-                    lat = M_PI_2-sizes(1)/domain.getRadius();
-                }
+                lat = M_PI_2-size/domain.getRadius();
                 xr.setCoord(lon, lat);
                 domain.rotateBack(x0, *x.getLevel(initTimeIdx)[i], xr);
                 x.getLevel(initTimeIdx)[i]->transformToCart(domain);

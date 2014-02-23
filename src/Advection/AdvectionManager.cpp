@@ -428,9 +428,6 @@ void AdvectionManager::remapMeshToTracers(const TimeLevelIndex<2> &timeIdx) {
     LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();
     for (; tracer != tracerManager.tracers.end(); ++tracer) {
         (*tracer)->resetSpeciesMass();
-    }
-    tracer = tracerManager.tracers.begin();
-    for (; tracer != tracerManager.tracers.end(); ++tracer) {
         const list<TracerMeshCell*> &cells = (*tracer)->getConnectedCells();
         assert(cells.size() != 0);
         list<TracerMeshCell*>::const_iterator cell;

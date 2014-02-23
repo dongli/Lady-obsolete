@@ -22,36 +22,36 @@ public:
      *
      *  @param x the grid coordinate.
      */
-    void setCoord(const LADY_SPACE_COORD &x);
+    void setCoord(const LADY_SPACE_COORD &x) { this->x = new LADY_SPACE_COORD(x); }
 
     /**
      *  Get the grid coordinate.
      *
      *  @return The grid coordinate.
      */
-    const LADY_SPACE_COORD& getCoord() const;
+    const LADY_SPACE_COORD& getCoord() const { return *x; }
 
     /**
      *  Set the cell volume.
      *
      *  @param volume the cell volume.
      */
-    void setVolume(double volume);
+    void setVolume(double volume) { this->volume = volume; }
 
     /**
      *  Get the cell volume.
      *
      *  @return The cell volume.
      */
-    double getVolume() const;
+    double getVolume() const { return volume; }
 
     /**
      *  Add a species.
      */
-    void addSpecies();
+    void addSpecies() { m.push_back(0.0); }
 
-    double& getSpeciesMass(int speciesIdx);
-    double getSpeciesMass(int speciesIdx) const;
+    double& getSpeciesMass(int s) { return m[s]; }
+    double getSpeciesMass(int s) const { return m[s]; }
 
     /**
      *  Reset the connected tracer to empty for later updating.
@@ -64,7 +64,7 @@ public:
 
     double getWeight(Tracer *tracer) const;
 
-    double getTotalRemapWeight() const;
+    double getTotalRemapWeight() const { return totalRemapWeight; }
 };
 
 }
