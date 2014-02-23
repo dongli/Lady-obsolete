@@ -10,6 +10,8 @@ SolidRotationTestCase::SolidRotationTestCase() {
     // -------------------------------------------------------------------------
     // initialize mesh
     mesh = new geomtk::RLLMesh(*domain);
+    // Note: Use larger Pole radius to decrease deformation when crossing Poles.
+    mesh->setPoleRadius(30.0*RAD);
     int numLon = 360;
     double fullLon[numLon], halfLon[numLon];
     double dlon = 2.0*M_PI/numLon;
@@ -69,9 +71,6 @@ SolidRotationTestCase::~SolidRotationTestCase() {
     delete axisPole;
     delete c0;
     delete cr0;
-    for (int i = 0; i < q.size(); ++i) {
-        delete q[i];
-    }
     REPORT_OFFLINE;
 }
 

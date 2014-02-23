@@ -287,10 +287,10 @@ void AdvectionManager::integrate_RK4(double dt,
         // ---------------------------------------------------------------------
         // update skeleton points of tracer
         TracerSkeleton &s = (*tracer)->getSkeleton();
-        vector<LADY_SPACE_COORD*> x0s = s.getXs(oldTimeIdx);
-        vector<LADY_SPACE_COORD*> x1s = s.getXs(newTimeIdx);
-        vector<LADY_MESH_INDEX*> idx0s = s.getIdxs(oldTimeIdx);
-        vector<LADY_MESH_INDEX*> idx1s = s.getIdxs(newTimeIdx);
+        vector<LADY_SPACE_COORD*> &x0s = s.getXs(oldTimeIdx);
+        vector<LADY_SPACE_COORD*> &x1s = s.getXs(newTimeIdx);
+        vector<LADY_MESH_INDEX*> &idx0s = s.getIdxs(oldTimeIdx);
+        vector<LADY_MESH_INDEX*> &idx1s = s.getIdxs(newTimeIdx);
         for (int i = 0; i < x0s.size(); ++i) {
             LADY_VELOCITY v1(domain.getNumDim());
             LADY_VELOCITY v2(domain.getNumDim());
@@ -307,17 +307,17 @@ void AdvectionManager::integrate_RK4(double dt,
             regrid->run(BILINEAR, oldTimeIdx, V, *x0s[i], v1, idx0s[i]);
             // =================================================================
             // stage 1
-            mesh.move(*x0s[i], dt05, v1, idx0, *x1s[i]);
+            mesh.move(*x0s[i], dt05, v1, *idx0s[i], *x1s[i]);
             idx1s[i]->locate(mesh, *x1s[i]);
             regrid->run(BILINEAR, halfTimeIdx, V, *x1s[i], v2, idx1s[i]);
             // =================================================================
             // stage 2
-            mesh.move(*x0s[i], dt05, v2, idx0, *x1s[i]);
+            mesh.move(*x0s[i], dt05, v2, *idx0s[i], *x1s[i]);
             idx1s[i]->locate(mesh, *x1s[i]);
             regrid->run(BILINEAR, halfTimeIdx, V, *x1s[i], v3, idx1s[i]);
             // =================================================================
             // stage 3
-            mesh.move(*x0s[i], dt, v3, idx0, *x1s[i]);
+            mesh.move(*x0s[i], dt, v3, *idx0s[i], *x1s[i]);
             idx1s[i]->locate(mesh, *x1s[i]);
             regrid->run(BILINEAR, newTimeIdx, V, *x1s[i], v4, idx1s[i]);
             // =================================================================

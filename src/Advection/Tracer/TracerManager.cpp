@@ -82,8 +82,8 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
             h(0) = 2.0*dx(0)*domain.getRadius()*cos(x0(1));
             h(1) = 2.0*h(0);
 #else
-            h(0) = 2.0*dx(0)*domain.getRadius()*cos(x0(1));
             h(1) = 2.0*dx(1)*domain.getRadius();
+            h(0) = h(1);
 #endif
         } else {
             REPORT_ERROR("Under construction!");
