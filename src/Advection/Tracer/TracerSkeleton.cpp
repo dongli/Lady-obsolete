@@ -72,15 +72,16 @@ void TracerSkeleton::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
             (*y[2])() <<  1.0 <<  0.0 << arma::endr;
             (*y[3])() <<  0.0 <<  1.0 << arma::endr;
             const LADY_SPACE_COORD &x0 = host->getX(initTimeIdx);
-            double dtheta = PI2/y.size();
+            double dtheta = PI2/y.size(), lon, lat;
             LADY_SPACE_COORD xr(domain.getNumDim());
             for (int i = 0; i < y.size(); ++i) {
-                xr(0) = i*dtheta;
+                lon = i*dtheta;
                 if ((*y[i])(1) != 0.0) {
-                    xr(1) = M_PI_2-sizes(0)/domain.getRadius();
+                    lat = M_PI_2-sizes(0)/domain.getRadius();
                 } else if ((*y[i])(0) != 0.0) {
-                    xr(1) = M_PI_2-sizes(1)/domain.getRadius();
+                    lat = M_PI_2-sizes(1)/domain.getRadius();
                 }
+                xr.setCoord(lon, lat);
                 domain.rotateBack(x0, *x.getLevel(initTimeIdx)[i], xr);
                 x.getLevel(initTimeIdx)[i]->transformToCart(domain);
                 idx.getLevel(initTimeIdx)[i]->locate(mesh, *x.getLevel(initTimeIdx)[i]);

@@ -67,6 +67,7 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
         for (int m = 0; m < domain.getNumDim(); ++m) {
             x0(m) = domain.getAxisStart(m)+dx[m]*0.5+dx[m]*i[m];
         }
+        x0.updateTrigonometricFunctions();
         x0.transformToCart(domain);
         // set mesh index
         LADY_MESH_INDEX &idx0 = (*tracer)->getMeshIndex(initTimeIdx);

@@ -54,10 +54,11 @@ SolidRotationTestCase::SolidRotationTestCase() {
     axisPole = new LADY_SPACE_COORD(2);
     c0 = new LADY_SPACE_COORD(2);
     cr0 = new LADY_SPACE_COORD(2);
-    (*axisPole)(0) = M_PI;
-    (*axisPole)(1) = M_PI_2-alpha;
-    (*c0)(0) = M_PI_2;
-    (*c0)(1) = 0;
+    double lon, lat;
+    lon = M_PI; lat = M_PI_2-alpha;
+    axisPole->setCoord(lon, lat);
+    lon = M_PI_2; lat = 0;
+    c0->setCoord(lon, lat);
     domain->rotate(*axisPole, *c0, *cr0);
     R = domain->getRadius()/3;
     H0 = 1000;

@@ -33,7 +33,6 @@ void AdvectionManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
         for (int i = 0; i < mesh.getTotalNumGrid(A_GRID); ++i) {
             LADY_SPACE_COORD x(domain.getNumDim());
             mesh.getGridCoord(i, x, A_GRID);
-            x.transformToPS(domain);
             double volume;
             mesh.getCellVolume(i, volume);
             for (int l = 0; l < 2; ++l) {
@@ -262,6 +261,7 @@ void AdvectionManager::integrate_RK4(double dt,
         if (idx0.isOnPole()) {
             idx0.setMoveOnPole(true);
             idx1.setMoveOnPole(true);
+            x0.transformToPS(domain);
         } else {
             idx0.setMoveOnPole(false);
             idx1.setMoveOnPole(false);
@@ -300,6 +300,7 @@ void AdvectionManager::integrate_RK4(double dt,
             if (idx0s[i]->isOnPole()) {
                 idx0s[i]->setMoveOnPole(true);
                 idx1s[i]->setMoveOnPole(true);
+                x0s[i]->transformToPS(domain);
             } else {
                 idx0s[i]->setMoveOnPole(false);
                 idx1s[i]->setMoveOnPole(false);
