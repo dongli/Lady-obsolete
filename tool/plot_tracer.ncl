@@ -4,10 +4,16 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 
 begin
 
+    start_time = 300
+    end_time = 300
+    time_step = 1
+
     PI = atan(1.0)*4
     RAD = PI/180
 
-    fs = systemfunc("for (( i = 90; i <= 120; ++i )); do printf '../build/Debug/tracers.%3.3d.nc\n' $i; done")
+    fs = systemfunc("for (( i = "+start_time+"; i <= "+end_time+"; "+ \
+        "i = i+"+time_step+" )); "+ \
+        "do printf '../build/Debug/tracers.%3.3d.nc\n' $i; done")
 
     f = addfile(fs(0), "r")
 
@@ -22,6 +28,11 @@ begin
     wks = gsn_open_wks("pdf", "tracers")
 
     point_size = 0.002
+
+    res_map = True
+    res_map@gsnFrame = False
+    res_map@mpCenterLonF = 180.0d0
+    res_map@mpOutlineOn = False
 
     res_tracer = True
     res_tracer@gsMarkerIndex = 16
@@ -44,17 +55,14 @@ begin
     do l = 0, num_time-1, 1
         system("echo time step: "+l)
         f = addfile(fs(l), "r")
-        res_map = True
-        res_map@gsnMaximize = True
-        res_map@gsnFrame = False
         ; res_map@gsnPolar = "SH"
-        ; res_map@mpMaxLatF = -60
+        ; res_map@mpMaxLatF = -0
         ; if (isdefined("check")) then
         ;     res_map@mpProjection = "Satellite"
-        ;     res_map@mpCenterLonF = f->q(check(0),0)/RAD
-        ;     res_map@mpCenterLatF = f->q(check(0),1)/RAD
+        ;     res_map@mpCenterLonF = f->c(check(0),0)/RAD
+        ;     res_map@mpCenterLatF = f->c(check(0),1)/RAD
         ;     res_map@mpLimitMode = "Angles"
-        ;     res_map@mpLeftAngleF = 8.0
+        ;     res_map@mpLeftAngleF = 2.0
         ;     res_map@mpRightAngleF = res_map@mpLeftAngleF
         ;     res_map@mpTopAngleF = res_map@mpLeftAngleF
         ;     res_map@mpBottomAngleF = res_map@mpLeftAngleF
@@ -71,8 +79,12 @@ begin
             gsn_polymarker(wks, map, c(0), c(1), res_tracer)
         end do
         ; tracer shape
-        do i = 0, num_tracer-1, 5
-            if (isdefined("check") .and. .not. any(check .eq. i)) then
+        if (.not. isdefined("check")) then
+            continue
+        end if
+        do k = 0, dimsizes(check)-1
+            i = check(k)
+            if (f->m(i,0) .lt. 0.0001) then
                 continue
             end if
             do j = 0, 3

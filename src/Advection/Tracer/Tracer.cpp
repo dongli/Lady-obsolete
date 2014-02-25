@@ -54,6 +54,7 @@ Tracer& Tracer::operator=(const Tracer &other) {
             *(idx.getLevel(l)) = *(other.idx.getLevel(l));
         }
         *skeleton = *(other.skeleton);
+        // TODO: Handle connected cells.
     }
     return *this;
 }
@@ -80,10 +81,6 @@ void Tracer::resetSpeciesMass() {
 void Tracer::connect(TracerMeshCell *cell, double weight) {
     cells.push_back(cell);
     totalRemapWeight += weight;
-}
-
-list<TracerMeshCell*>& Tracer::getConnectedCells() {
-    return cells;
 }
 
 double Tracer::getTotalRemapWeight() const {

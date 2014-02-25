@@ -2,6 +2,10 @@
 #include "TracerSkeleton.h"
 
 namespace lady {
+    
+#ifdef DEBUG
+    double DeformMatrixFitting::maxObjectiveValue = -999;
+#endif
 
 DeformMatrixFitting::DeformMatrixFitting(const LADY_DOMAIN &domain,
                                          Tracer *tracer) {
@@ -20,8 +24,9 @@ DeformMatrixFitting::DeformMatrixFitting(const LADY_DOMAIN &domain,
     a = new nlopt::opt(nlopt::LD_SLSQP, pow(domain.getNumDim(), 2));
     a->set_min_objective(DeformMatrixFitting::objective, &data);
     a->add_inequality_constraint(DeformMatrixFitting::constraint, &data);
-    a->set_ftol_rel(1.0e-4);
     a->set_stopval(1.0e-6);
+    a->set_ftol_rel(1.0e-3);
+    a->set_ftol_abs(1.0e-6);
 }
     
 DeformMatrixFitting::~DeformMatrixFitting() {
@@ -50,7 +55,7 @@ void DeformMatrixFitting::fit(const TimeLevelIndex<2> &timeIdx,
     } else {
         REPORT_ERROR("Under construction!");
     }
-//    if (tracer->getID() == 139 && tracer->getMeshIndex(timeIdx).isOnPole()) {
+//    if (tracer->getID() == 10000) {
 //        data.debug = true;
 //        tracer->getH(timeIdx-1).print();
 //        std::ofstream file;
@@ -73,8 +78,13 @@ void DeformMatrixFitting::fit(const TimeLevelIndex<2> &timeIdx,
           res == nlopt::STOPVAL_REACHED)) {
         REPORT_ERROR("Optimization failed!");
     }
+#ifdef DEBUG
+    if (maxObjectiveValue < obj) maxObjectiveValue = obj;
+#endif
+//    if (data.debug) {
+//        CHECK_POINT
+//    }
     // copy result
-//    cout << data.tracer->getID() << endl;
     k = 0;
     for (int j = 0; j < data.domain->getNumDim(); ++j) {
         for (int i = 0; i < data.domain->getNumDim(); ++i) {

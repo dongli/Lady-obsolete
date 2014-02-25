@@ -27,6 +27,9 @@ public:
     DeformMatrixFitting(const LADY_DOMAIN &domain, Tracer *tracer);
     ~DeformMatrixFitting();
     void fit(const TimeLevelIndex<2> &timeIdx, Tracer *tracer);
+#ifdef DEBUG
+    static double maxObjectiveValue;
+#endif
 private:
     /**
      *  Objective function for optimization.

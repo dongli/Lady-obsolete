@@ -1,6 +1,9 @@
 #include "AdvectionManager.h"
 #include "ShapeFunction.h"
 #include "TracerSkeleton.h"
+#ifdef DEBUG
+#include "DeformMatrixFitting.h"
+#endif
 
 namespace lady {
 
@@ -332,6 +335,9 @@ void AdvectionManager::integrate_RK4(double dt,
         (*tracer)->updateDeformMatrix(domain, newTimeIdx);
         //(*tracer)->selfInspect(domain, newTimeIdx);
     }
+#ifdef DEBUG
+    REPORT_NOTICE("Maximum fitting objective value is " << DeformMatrixFitting::maxObjectiveValue << ".");
+#endif
 }
 
 void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
@@ -405,8 +411,7 @@ void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
             c0[i] = new LADY_SPACE_COORD(2);
             LADY_SPACE_COORD xr(2);
             double theta = i*dtheta;
-            xr(0) = theta;
-            xr(1) = lat;
+            xr.setCoord(theta, lat);
             domain.rotateBack((*tracer)->getX(timeIdx), *(c0[i]), xr);
         }
         for (int m = 0; m < 2; ++m) {

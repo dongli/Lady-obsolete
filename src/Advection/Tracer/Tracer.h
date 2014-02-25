@@ -79,7 +79,7 @@ public:
      *
      *  @return The connected mesh cell list.
      */
-    list<TracerMeshCell*>& getConnectedCells();
+    list<TracerMeshCell*>& getConnectedCells() { return cells; }
 
     double getTotalRemapWeight() const;
 
