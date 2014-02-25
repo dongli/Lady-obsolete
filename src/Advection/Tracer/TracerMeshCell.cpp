@@ -4,12 +4,18 @@ namespace lady {
 
 TracerMeshCell::TracerMeshCell() {
     x = NULL;
+    maxNumConnectedTracer = 1000;
+    numConnectedTracer = 0;
+    connectedTracers = new Tracer*[maxNumConnectedTracer];
+    remapWeights = new double[maxNumConnectedTracer];
 }
 
 TracerMeshCell::~TracerMeshCell() {
     if (x != NULL) {
         delete x;
     }
+    delete [] connectedTracers;
+    delete [] remapWeights;
 }
 
 void TracerMeshCell::resetSpeciesMass() {
@@ -19,29 +25,39 @@ void TracerMeshCell::resetSpeciesMass() {
 }
 
 void TracerMeshCell::resetConnectedTracers() {
-    tracers.clear();
-    totalRemapWeight = 0.0;
+    numConnectedTracer = 0;
 }
 
 void TracerMeshCell::connect(Tracer *tracer, double weight) {
+    if (maxNumConnectedTracer <= numConnectedTracer) {
+        REPORT_ERROR("Limit of tracer number (" << maxNumConnectedTracer <<
+                     ") has been reached!");
+    }
 #ifdef DEBUG
-    if (tracers.count(tracer) != 0) {
-        REPORT_ERROR("Tracer (ID = " << tracer->getID() <<
-                     ") has already been connected!");
+    for (int i = 0; i < numConnectedTracer; ++i) {
+        if (connectedTracers[i] == tracer) {
+            REPORT_ERROR("Tracer (ID = " << tracer->getID() <<
+                         ") has already been connected!");
+        }
     }
 #endif
-    tracers[tracer] = weight;
+    connectedTracers[numConnectedTracer] = tracer;
+    remapWeights[numConnectedTracer] = weight;
+    numConnectedTracer++;
     totalRemapWeight += weight;
 }
 
-double TracerMeshCell::getWeight(Tracer *tracer) const {
-#ifdef DEBUG
-    if (tracers.count(tracer) == 0) {
-        REPORT_ERROR("Tracer (ID = " << tracer->getID() <<
-                     ") has not yet been connected!");
+double TracerMeshCell::getRemapWeight(Tracer *tracer) const {
+    int i;
+    for (i = 0; i < numConnectedTracer; ++i) {
+        if (connectedTracers[i] == tracer) {
+            break;
+        }
     }
-#endif
-    return tracers.at(tracer);
+    if (i == numConnectedTracer) {
+        REPORT_ERROR("Tracer is not connected!");
+    }
+    return remapWeights[i];
 }
 
 }

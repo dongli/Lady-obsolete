@@ -34,11 +34,13 @@ public:
     /**
      *  Initialize advection manager.
      *
-     *  @param domain    the spatial domain.
-     *  @param mesh      the mesh.
-     *  @param numParcel the number of parcels (a.k.a., tracers).
+     *  @param domain     the spatial domain.
+     *  @param mesh       the mesh.
+     *  @param numParcelX the number of parcels (a.k.a., tracers) along x axis.
+     *  @param numParcelY the number of parcels (a.k.a., tracers) along y axis.
      */
-    void init(const LADY_DOMAIN &domain, const LADY_MESH &mesh, int numParcel);
+    void init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
+              int numParcelX, int numParcelY);
 
     const LADY_FIELD<TracerMeshCell>& getTracerMeshCells() const {
         return *tracerMeshCells;

@@ -1,7 +1,7 @@
 #include "lady.h"
 
-#define USE_DEFORMATION_TEST_CASE 0
-#define USE_SOLID_ROTATION_TEST_CASE 1
+#define USE_DEFORMATION_TEST_CASE 1
+#define USE_SOLID_ROTATION_TEST_CASE 0
 
 int main(int argc, const char *argv[])
 {
@@ -20,7 +20,7 @@ int main(int argc, const char *argv[])
     timeManager.init(testCase.getStartTime(), testCase.getEndTime(),
                      testCase.getStepSize());
 
-    advectionManager.init(testCase.getDomain(), testCase.getMesh(), 2048);
+    advectionManager.init(testCase.getDomain(), testCase.getMesh(), 256, 128);
 
     testCase.calcInitCond(advectionManager);
     testCase.advance(timeManager.getSeconds(), oldTimeIdx);

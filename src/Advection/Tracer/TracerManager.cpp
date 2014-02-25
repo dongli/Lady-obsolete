@@ -13,8 +13,37 @@ TracerManager::~TracerManager() {
 }
 
 void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
-                         int numTracer) {
+                         int numTracerX, int numTracerY) {
     this->domain = &domain;
+    int numTracer = 0;
+    // calculate the total number of tracers
+    if (dynamic_cast<const geomtk::SphereDomain*>(&domain) != NULL) {
+        // Note: Use reduced lat-lon mesh as the initial distribution of
+        //       tracers.
+        if (numTracerX%2 != 0) {
+            REPORT_ERROR("Tracer number (now is " << numTracerX <<
+                         ") along longitude axis should be even!");
+        }
+        double dlat = domain.getAxisSpan(1)/numTracerY;
+        double shiftLat = 45.0*RAD;
+        double minNumTracerX = 4;
+        double cosLat0, cosLat1 = cos(shiftLat);
+        for (int j = 0; j < numTracerY; ++j) {
+            double lat = domain.getAxisStart(1)+dlat*0.5+dlat*j;
+            int numTracerX_;
+            if (fabs(lat) < shiftLat) {
+                numTracerX_ = numTracerX;
+            } else {
+                if (j == 0) cosLat0 = fabs(cos(lat));
+                double ratio = (fabs(cos(lat))-cosLat0)/(cosLat1-cosLat0);
+                numTracerX_ = ratio*numTracerX+(1-ratio)*minNumTracerX;
+                if (numTracerX_%2 != 0) numTracerX_++;
+            }
+            numTracer += numTracerX_;
+        }
+    } else {
+        REPORT_ERROR("Under construction!");
+    }
     tracers.resize(numTracer);
     int ID = 0;
     LADY_LIST<Tracer*>::iterator tracer = tracers.begin();
@@ -22,73 +51,58 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
         *tracer = new Tracer(domain.getNumDim());
         (*tracer)->setID(ID++);
     }
-    // -------------------------------------------------------------------------
-    // set initial centroid coordinates and deformation matrices of tracers
-    vec dx(domain.getNumDim());
-    int nt[domain.getNumDim()];
-#define DEBUG_CROSS_POLE 0
-#define DEBUG_EQUATOR 0
-#if DEBUG_CROSS_POLE == 1
-    assert(dynamic_cast<const geomtk::SphereDomain*>(&domain));
-    nt[0] = numTracer; nt[1] = 1;
-    dx(0) = PI2/numTracer; dx(1) = 3*RAD;
-#elif DEBUG_EQUATOR == 1
-    assert(dynamic_cast<const geomtk::SphereDomain*>(&domain));
-    nt[0] = numTracer; nt[1] = 1;
-    dx(0) = PI2/numTracer; dx(1) = 180*RAD;
-#else
-    int tmp1 = numTracer;
-    for (int m = 0; m < domain.getNumDim(); ++m) {
-        int tmp2 = ceil(pow(tmp1, 1.0/(domain.getNumDim()-m)));
-        for (; tmp2 >= 1; --tmp2) {
-            if (tmp1%tmp2 == 0) {
-                break;
-            }
-        }
-        nt[m] = tmp2;
-        tmp1 /= nt[m];
-        dx[m] = domain.getAxisSpan(m)/nt[m];
-    }
-#endif
-    int i[domain.getNumDim()];
     TimeLevelIndex<2> initTimeIdx;
-    memset(i, 0, sizeof(int)*domain.getNumDim()); i[0] = -1;
     for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
-        // set spatial index
-        i[0] += 1;
-        for (int m = 0; m < domain.getNumDim()-1; ++m) {
-            if (i[m] >= nt[m]) {
-                i[m] = 0;
-                i[m+1] += 1;
-            }
-        }
         // set coordinate
         LADY_SPACE_COORD &x0 = (*tracer)->getX(initTimeIdx);
-        for (int m = 0; m < domain.getNumDim(); ++m) {
-            x0(m) = domain.getAxisStart(m)+dx[m]*0.5+dx[m]*i[m];
+        vec h(domain.getNumDim());
+        if (dynamic_cast<const geomtk::SphereDomain*>(&domain) != NULL) {
+            // Note: Use reduced lat-lon mesh as the initial distribution of
+            //       tracers.
+            double dlat = domain.getAxisSpan(1)/numTracerY;
+            double shiftLat = 45.0*RAD;
+            double minNumTracerX = 4;
+            double cosLat0, cosLat1 = cos(shiftLat);
+            double dlon;
+            int l = 0;
+            for (int j = 0; j < numTracerY; ++j) {
+                double lat = domain.getAxisStart(1)+dlat*0.5+dlat*j;
+                int numTracerX_;
+                if (fabs(lat) < shiftLat) {
+                    numTracerX_ = numTracerX;
+                } else {
+                    if (j == 0) cosLat0 = fabs(cos(lat));
+                    double ratio = (fabs(cos(lat))-cosLat0)/(cosLat1-cosLat0);
+                    numTracerX_ = ratio*numTracerX+(1-ratio)*minNumTracerX;
+                    if (numTracerX_%2 != 0) numTracerX_++;
+                }
+                for (int i = 0; i < numTracerX_; ++i) {
+                    if (l == (*tracer)->getID()) {
+                        dlon = domain.getAxisSpan(0)/numTracerX_;
+                        double lon = domain.getAxisStart(0)+dlon*0.5+dlon*i;
+                        x0.setCoord(lon, lat);
+                        l = -1;
+                        break;
+                    }
+                    l++;
+                }
+                if (l == -1) break;
+            }
+            x0.transformToCart(domain);
+            h(0) = 2.0*dlon*domain.getRadius()*cos(x0(1));
+            h(1) = 2.0*dlat*domain.getRadius();
+        } else {
+            REPORT_ERROR("Under construction!");
         }
-        x0.updateTrigonometricFunctions();
-        x0.transformToCart(domain);
         // set mesh index
         LADY_MESH_INDEX &idx0 = (*tracer)->getMeshIndex(initTimeIdx);
         idx0.locate(mesh, x0);
+        // TODO: This may be unnecessary.
         // when tracer is on Pole, transform its coordinate to PS for later use
         if (idx0.isOnPole()) {
             x0.transformToPS(domain);
         }
         // set tracer skeleton
-        vec h(domain.getNumDim());
-        if (dynamic_cast<const geomtk::SphereDomain*>(&domain) != NULL) {
-#if DEBUG_CROSS_POLE == 1 || DEBUG_EQUATOR == 1
-            h(0) = 2.0*dx(0)*domain.getRadius()*cos(x0(1));
-            h(1) = 2.0*h(0);
-#else
-            h(0) = 2.0*dx(0)*domain.getRadius()*cos(x0(1));
-            h(1) = 2.0*dx(1)*domain.getRadius();
-#endif
-        } else {
-            REPORT_ERROR("Under construction!");
-        }
         (*tracer)->getSkeleton().init(domain, mesh, h.max());
         // set deformation matrix
         (*tracer)->getH(initTimeIdx).eye();
@@ -97,7 +111,7 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
     // -------------------------------------------------------------------------
     REPORT_NOTICE(numTracer << " tracers are initialized.");
 }
-    
+
 void TracerManager::registerTracer(const string &name, const string &units,
                                    const string &brief) {
     speciesInfos.push_back(new TracerSpeciesInfo(name, units, brief));

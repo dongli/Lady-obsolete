@@ -11,7 +11,11 @@ protected:
     LADY_SPACE_COORD *x; //>! center grid coordinate
     double volume; //>! cell volume for converting density and mass
     vector<double> m; //>! species mass array
-    unordered_map<Tracer*, double> tracers; //>! tracer-weight map
+    // remapping parameters
+    int maxNumConnectedTracer;
+    int numConnectedTracer;
+    Tracer **connectedTracers;
+    double *remapWeights;
     double totalRemapWeight;
 public:
     TracerMeshCell();
@@ -62,7 +66,7 @@ public:
 
     void connect(Tracer *tracer, double weight);
 
-    double getWeight(Tracer *tracer) const;
+    double getRemapWeight(Tracer *tracer) const;
 
     double getTotalRemapWeight() const { return totalRemapWeight; }
 };

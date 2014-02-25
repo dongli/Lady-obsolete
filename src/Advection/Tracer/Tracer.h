@@ -69,9 +69,10 @@ public:
     /**
      *  Connect the tracer with the given mesh cell.
      *
-     *  @param cell the mesh cell to be connected.
+     *  @param cell   the mesh cell to be connected.
+     *  @param weight the remapping weight.
      */
-    void connect(TracerMeshCell *cell);
+    void connect(TracerMeshCell *cell, double weight);
 
     /**
      *  Get the connected mesh cells.

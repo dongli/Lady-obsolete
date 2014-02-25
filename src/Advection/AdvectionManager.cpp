@@ -21,8 +21,8 @@ AdvectionManager::~AdvectionManager() {
 }
 
 void AdvectionManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
-                            int numParcel) {
-    tracerManager.init(domain, mesh, numParcel);
+                            int numParcelX, int numParcelY) {
+    tracerManager.init(domain, mesh, numParcelX, numParcelY);
     ShapeFunction::init(domain);
     if (regrid == NULL) {
         regrid = new LADY_REGRID(mesh);
@@ -370,9 +370,10 @@ void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
             (*tracer)->getBodyCoord(domain, timeIdx, cell->getCoord(), y);
             double f = (*tracer)->getShapeFunction(timeIdx, y);
             if (f > 0.0) {
-                // the cell volume is also needed to be considered
-                cell->connect(*tracer, f*cell->getVolume());
-                (*tracer)->connect(cell);
+                // Note: The cell volume is also needed to be considered.
+                double weight = f*cell->getVolume();
+                cell->connect(*tracer, weight);
+                (*tracer)->connect(cell, weight);
             }
         }
         assert((*tracer)->getConnectedCells().size() != 0);
@@ -432,7 +433,8 @@ void AdvectionManager::remapMeshToTracers(const TimeLevelIndex<2> &timeIdx) {
         assert(cells.size() != 0);
         list<TracerMeshCell*>::const_iterator cell;
         for (cell = cells.begin(); cell != cells.end(); ++cell) {
-            double weight = (*cell)->getWeight(*tracer)/(*cell)->getTotalRemapWeight();
+            double weight = (*cell)->getRemapWeight(*tracer)/
+                            (*cell)->getTotalRemapWeight();
             for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
                 double &m = (*tracer)->getSpeciesMass(s);
                 m += (*cell)->getSpeciesMass(s)*weight;
@@ -449,7 +451,8 @@ void AdvectionManager::remapTracersToMesh(const TimeLevelIndex<2> &timeIdx) {
     for (; tracer != tracerManager.tracers.end(); ++tracer) {
         list<TracerMeshCell*>::iterator cell = (*tracer)->getConnectedCells().begin();
         for (; cell != (*tracer)->getConnectedCells().end(); ++cell) {
-            double weight = (*cell)->getWeight(*tracer)/(*tracer)->getTotalRemapWeight();
+            double weight = (*cell)->getRemapWeight(*tracer)/
+                            (*tracer)->getTotalRemapWeight();
             for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
                 double &m = (*cell)->getSpeciesMass(s);
                 m += (*tracer)->getSpeciesMass(s)*weight;

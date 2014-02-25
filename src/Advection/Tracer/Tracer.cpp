@@ -77,9 +77,9 @@ void Tracer::resetSpeciesMass() {
     }
 }
 
-void Tracer::connect(TracerMeshCell *cell) {
+void Tracer::connect(TracerMeshCell *cell, double weight) {
     cells.push_back(cell);
-    totalRemapWeight += cell->getWeight(this);
+    totalRemapWeight += weight;
 }
 
 list<TracerMeshCell*>& Tracer::getConnectedCells() {

@@ -23,11 +23,13 @@ public:
     /**
      *  Initialize tracer manager.
      *
-     *  @param domain    the space domain.
-     *  @param mesh      the mesh where flow is defined.
-     *  @param numParcel the number of parcels.
+     *  @param domain     the space domain.
+     *  @param mesh       the mesh where flow is defined.
+     *  @param numParcelX the number of parcels along x axis.
+     *  @param numParcelY the number of parcels along y axis.
      */
-    void init(const LADY_DOMAIN &domain, const LADY_MESH &mesh, int numParcel);
+    void init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
+              int numTracerX, int numTracerY);
 
     void registerTracer(const string &name, const string &units,
                         const string &brief);
