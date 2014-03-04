@@ -228,94 +228,101 @@ void AdvectionManager::integrate_RK4(double dt,
     const LADY_MESH &mesh = static_cast<const LADY_MESH&>(V.getMesh());
     const LADY_DOMAIN &domain = static_cast<const LADY_DOMAIN&>(mesh.getDomain());
     double dt05 = 0.5*dt;
-    LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();
-    for (; tracer != tracerManager.tracers.end(); ++tracer) {
-        // ---------------------------------------------------------------------
-        // update location and deformation matrix of tracer
-        LADY_SPACE_COORD &x0 = (*tracer)->getX(oldTimeIdx);
-        LADY_SPACE_COORD &x1 = (*tracer)->getX(newTimeIdx);
-        LADY_MESH_INDEX &idx0 = (*tracer)->getMeshIndex(oldTimeIdx);
-        LADY_MESH_INDEX &idx1 = (*tracer)->getMeshIndex(newTimeIdx);
-        LADY_VELOCITY v1(domain.getNumDim());
-        LADY_VELOCITY v2(domain.getNumDim());
-        LADY_VELOCITY v3(domain.getNumDim());
-        LADY_VELOCITY v4(domain.getNumDim());
-        LADY_VELOCITY v(domain.getNumDim());
-        // TODO: Should we hide the following codes? Because they are related to
-        //       sphere domain.
-        if (idx0.isOnPole()) {
-            idx0.setMoveOnPole(true);
-            idx1.setMoveOnPole(true);
-            x0.transformToPS(domain);
-        } else {
-            idx0.setMoveOnPole(false);
-            idx1.setMoveOnPole(false);
-        }
-        regrid->run(BILINEAR, oldTimeIdx, V, x0, v1, &idx0);
-        // =====================================================================
-        // stage 1
-        mesh.move(x0, dt05, v1, idx0, x1); idx1.locate(mesh, x1);
-        regrid->run(BILINEAR, halfTimeIdx, V, x1, v2, &idx1);
-        // =====================================================================
-        // stage 2
-        mesh.move(x0, dt05, v2, idx0, x1); idx1.locate(mesh, x1);
-        regrid->run(BILINEAR, halfTimeIdx, V, x1, v3, &idx1);
-        // =====================================================================
-        // stage 3
-        mesh.move(x0, dt, v3, idx0, x1); idx1.locate(mesh, x1);
-        regrid->run(BILINEAR, newTimeIdx, V, x1, v4, &idx1);
-        // =====================================================================
-        // stage 4
-        v = (v1+v2*2.0+v3*2.0+v4)/6.0;
-        mesh.move(x0, dt, v, idx0, x1); idx1.locate(mesh, x1);
-        x1.transformToCart(domain);
-        // ---------------------------------------------------------------------
-        // update skeleton points of tracer
-        TracerSkeleton &s = (*tracer)->getSkeleton();
-        vector<LADY_SPACE_COORD*> &x0s = s.getXs(oldTimeIdx);
-        vector<LADY_SPACE_COORD*> &x1s = s.getXs(newTimeIdx);
-        vector<LADY_MESH_INDEX*> &idx0s = s.getIdxs(oldTimeIdx);
-        vector<LADY_MESH_INDEX*> &idx1s = s.getIdxs(newTimeIdx);
-        for (int i = 0; i < x0s.size(); ++i) {
-            LADY_VELOCITY v1(domain.getNumDim());
-            LADY_VELOCITY v2(domain.getNumDim());
-            LADY_VELOCITY v3(domain.getNumDim());
-            LADY_VELOCITY v4(domain.getNumDim());
-            LADY_VELOCITY v(domain.getNumDim());
-            if (idx0s[i]->isOnPole()) {
-                idx0s[i]->setMoveOnPole(true);
-                idx1s[i]->setMoveOnPole(true);
-                x0s[i]->transformToPS(domain);
-            } else {
-                idx0s[i]->setMoveOnPole(false);
-                idx1s[i]->setMoveOnPole(false);
+#pragma omp parallel
+#pragma omp single
+    {
+        LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();
+        for (; tracer != tracerManager.tracers.end(); ++tracer) {
+#pragma omp task
+            {
+                // -----------------------------------------------------------------
+                // update location and deformation matrix of tracer
+                LADY_SPACE_COORD &x0 = (*tracer)->getX(oldTimeIdx);
+                LADY_SPACE_COORD &x1 = (*tracer)->getX(newTimeIdx);
+                LADY_MESH_INDEX &idx0 = (*tracer)->getMeshIndex(oldTimeIdx);
+                LADY_MESH_INDEX &idx1 = (*tracer)->getMeshIndex(newTimeIdx);
+                LADY_VELOCITY v1(domain.getNumDim());
+                LADY_VELOCITY v2(domain.getNumDim());
+                LADY_VELOCITY v3(domain.getNumDim());
+                LADY_VELOCITY v4(domain.getNumDim());
+                LADY_VELOCITY v(domain.getNumDim());
+                // TODO: Should we hide the following codes? Because they are
+                //       related to sphere domain.
+                if (idx0.isOnPole()) {
+                    idx0.setMoveOnPole(true);
+                    idx1.setMoveOnPole(true);
+                    x0.transformToPS(domain);
+                } else {
+                    idx0.setMoveOnPole(false);
+                    idx1.setMoveOnPole(false);
+                }
+                regrid->run(BILINEAR, oldTimeIdx, V, x0, v1, &idx0);
+                // =============================================================
+                // stage 1
+                mesh.move(x0, dt05, v1, idx0, x1); idx1.locate(mesh, x1);
+                regrid->run(BILINEAR, halfTimeIdx, V, x1, v2, &idx1);
+                // =============================================================
+                // stage 2
+                mesh.move(x0, dt05, v2, idx0, x1); idx1.locate(mesh, x1);
+                regrid->run(BILINEAR, halfTimeIdx, V, x1, v3, &idx1);
+                // =============================================================
+                // stage 3
+                mesh.move(x0, dt, v3, idx0, x1); idx1.locate(mesh, x1);
+                regrid->run(BILINEAR, newTimeIdx, V, x1, v4, &idx1);
+                // =============================================================
+                // stage 4
+                v = (v1+v2*2.0+v3*2.0+v4)/6.0;
+                mesh.move(x0, dt, v, idx0, x1); idx1.locate(mesh, x1);
+                x1.transformToCart(domain);
+                // -------------------------------------------------------------
+                // update skeleton points of tracer
+                TracerSkeleton &s = (*tracer)->getSkeleton();
+                vector<LADY_SPACE_COORD*> &x0s = s.getXs(oldTimeIdx);
+                vector<LADY_SPACE_COORD*> &x1s = s.getXs(newTimeIdx);
+                vector<LADY_MESH_INDEX*> &idx0s = s.getIdxs(oldTimeIdx);
+                vector<LADY_MESH_INDEX*> &idx1s = s.getIdxs(newTimeIdx);
+                for (int i = 0; i < x0s.size(); ++i) {
+                    LADY_VELOCITY v1(domain.getNumDim());
+                    LADY_VELOCITY v2(domain.getNumDim());
+                    LADY_VELOCITY v3(domain.getNumDim());
+                    LADY_VELOCITY v4(domain.getNumDim());
+                    LADY_VELOCITY v(domain.getNumDim());
+                    if (idx0s[i]->isOnPole()) {
+                        idx0s[i]->setMoveOnPole(true);
+                        idx1s[i]->setMoveOnPole(true);
+                        x0s[i]->transformToPS(domain);
+                    } else {
+                        idx0s[i]->setMoveOnPole(false);
+                        idx1s[i]->setMoveOnPole(false);
+                    }
+                    regrid->run(BILINEAR, oldTimeIdx, V, *x0s[i], v1, idx0s[i]);
+                    // =============================================================
+                    // stage 1
+                    mesh.move(*x0s[i], dt05, v1, *idx0s[i], *x1s[i]);
+                    idx1s[i]->locate(mesh, *x1s[i]);
+                    regrid->run(BILINEAR, halfTimeIdx, V, *x1s[i], v2, idx1s[i]);
+                    // =============================================================
+                    // stage 2
+                    mesh.move(*x0s[i], dt05, v2, *idx0s[i], *x1s[i]);
+                    idx1s[i]->locate(mesh, *x1s[i]);
+                    regrid->run(BILINEAR, halfTimeIdx, V, *x1s[i], v3, idx1s[i]);
+                    // =============================================================
+                    // stage 3
+                    mesh.move(*x0s[i], dt, v3, *idx0s[i], *x1s[i]);
+                    idx1s[i]->locate(mesh, *x1s[i]);
+                    regrid->run(BILINEAR, newTimeIdx, V, *x1s[i], v4, idx1s[i]);
+                    // =============================================================
+                    // stage 4
+                    v = (v1+v2*2.0+v3*2.0+v4)/6.0;
+                    mesh.move(*x0s[i], dt, v, *idx0s[i], *x1s[i]);
+                    idx1s[i]->locate(mesh, *x1s[i]);
+                    x1s[i]->transformToCart(domain);
+                }
+                // -----------------------------------------------------------------
+                (*tracer)->updateDeformMatrix(domain, newTimeIdx);
+                //(*tracer)->selfInspect(domain, newTimeIdx);
             }
-            regrid->run(BILINEAR, oldTimeIdx, V, *x0s[i], v1, idx0s[i]);
-            // =================================================================
-            // stage 1
-            mesh.move(*x0s[i], dt05, v1, *idx0s[i], *x1s[i]);
-            idx1s[i]->locate(mesh, *x1s[i]);
-            regrid->run(BILINEAR, halfTimeIdx, V, *x1s[i], v2, idx1s[i]);
-            // =================================================================
-            // stage 2
-            mesh.move(*x0s[i], dt05, v2, *idx0s[i], *x1s[i]);
-            idx1s[i]->locate(mesh, *x1s[i]);
-            regrid->run(BILINEAR, halfTimeIdx, V, *x1s[i], v3, idx1s[i]);
-            // =================================================================
-            // stage 3
-            mesh.move(*x0s[i], dt, v3, *idx0s[i], *x1s[i]);
-            idx1s[i]->locate(mesh, *x1s[i]);
-            regrid->run(BILINEAR, newTimeIdx, V, *x1s[i], v4, idx1s[i]);
-            // =================================================================
-            // stage 4
-            v = (v1+v2*2.0+v3*2.0+v4)/6.0;
-            mesh.move(*x0s[i], dt, v, *idx0s[i], *x1s[i]);
-            idx1s[i]->locate(mesh, *x1s[i]);
-            x1s[i]->transformToCart(domain);
         }
-        // ---------------------------------------------------------------------
-        (*tracer)->updateDeformMatrix(domain, newTimeIdx);
-        //(*tracer)->selfInspect(domain, newTimeIdx);
     }
 #ifdef DEBUG
     REPORT_NOTICE("Maximum fitting objective value is " << DeformMatrixFitting::maxObjectiveValue << ".");

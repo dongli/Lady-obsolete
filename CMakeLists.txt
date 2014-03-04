@@ -9,14 +9,15 @@
 
 cmake_minimum_required (VERSION 2.8)
 
-add_definitions(-DDEBUG)
+# ------------------------------------------------------------------------------
+project (lady CXX)
+
+add_definitions (-DDEBUG)
+set (CMAKE_CXX_COMPILER "/usr/local/bin/g++-4.9")
 set (CMAKE_CXX_FLAGS "-std=c++11")
 
 option (USE_SYSTEM_MLPACK "Use system library MLPACK" ON)
 option (USE_SYSTEM_NLOPT "Use system library NLopt" ON)
-
-# ------------------------------------------------------------------------------
-project (lady CXX)
 
 # ------------------------------------------------------------------------------
 # external libraries
@@ -149,7 +150,7 @@ foreach (dir ${source_directories})
         foreach (demo_path ${demo_paths})
             get_filename_component (demo ${demo_path} NAME_WE)
             add_executable (${demo} ${demo_path})
-            target_link_libraries (${demo} armadillo geomtk lady)
+            target_link_libraries (${demo} geomtk lady)
         endforeach ()
     endif ()
 endforeach ()

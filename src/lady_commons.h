@@ -8,7 +8,6 @@
 #include <iostream>
 #include <iomanip>
 #include <list>
-#include <unordered_map>
 #include <string>
 #include <ctime>
 #include <fstream>
@@ -22,7 +21,6 @@ using std::setprecision;
 using std::string;
 using std::vector;
 using std::list;
-using std::unordered_map;
 
 using arma::vec;
 using arma::mat;
