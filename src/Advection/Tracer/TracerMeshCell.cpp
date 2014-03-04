@@ -26,6 +26,7 @@ void TracerMeshCell::resetSpeciesMass() {
 
 void TracerMeshCell::resetConnectedTracers() {
     numConnectedTracer = 0;
+    totalRemapWeight = 0;
 }
 
 void TracerMeshCell::connect(Tracer *tracer, double weight) {
@@ -40,6 +41,9 @@ void TracerMeshCell::connect(Tracer *tracer, double weight) {
                          ") has already been connected!");
         }
     }
+    if (numConnectedTracer == 0) {
+        assert(totalRemapWeight == 0);
+    }
 #endif
     connectedTracers[numConnectedTracer] = tracer;
     remapWeights[numConnectedTracer] = weight;
@@ -51,13 +55,10 @@ double TracerMeshCell::getRemapWeight(Tracer *tracer) const {
     int i;
     for (i = 0; i < numConnectedTracer; ++i) {
         if (connectedTracers[i] == tracer) {
-            break;
+            return remapWeights[i];
         }
     }
-    if (i == numConnectedTracer) {
-        REPORT_ERROR("Tracer is not connected!");
-    }
-    return remapWeights[i];
+    REPORT_ERROR("Tracer is not connected!");
 }
 
 }

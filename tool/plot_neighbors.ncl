@@ -23,14 +23,14 @@ begin
     res_map = True
     res_map@gsnMaximize = True
     res_map@gsnFrame = False
-    ;res_map@mpProjection = "Satellite"
-    ;res_map@mpLimitMode = "Angles"
-    ;res_map@mpCenterLonF = p0(0)
-    ;res_map@mpCenterLatF = p0(1)
-    ;res_map@mpLeftAngleF = 5.0
-    ;res_map@mpRightAngleF = 5.0
-    ;res_map@mpTopAngleF = 5.0
-    ;res_map@mpBottomAngleF = 5.0
+    res_map@mpProjection = "Satellite"
+    res_map@mpLimitMode = "Angles"
+    res_map@mpCenterLonF = p0(0)
+    res_map@mpCenterLatF = p0(1)
+    res_map@mpLeftAngleF = 5.0
+    res_map@mpRightAngleF = 5.0
+    res_map@mpTopAngleF = 5.0
+    res_map@mpBottomAngleF = 5.0
 
     map = gsn_csm_map(wks, res_map)
 

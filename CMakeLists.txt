@@ -68,6 +68,37 @@ else ()
     endif ()
 endif ()
 
+# CGAL
+find_package (CGAL)
+if (NOT CGAL_FOUND)
+    if (DEFINED ENV{CGAL_ROOT})
+        message ("@@ Use user provided library CGAL!")
+        message ("@@ CGAL_ROOT = $ENV{CGAL_ROOT}")
+    else ()
+        message (FATAL_ERROR
+            "CMake couldn't find library CGAL! "
+            "If it have been installed and you know where it is, "
+            "set CGAL_ROOT (e.g. in .bashrc) to it."
+        )
+    endif ()
+endif ()
+include (${CGAL_USE_FILE})
+
+# Boost
+find_package (Boost REQUIRED)
+if (NOT Boost_FOUND)
+    if (DEFINED ENV{Boost_ROOT})
+        message ("@@ Use user provided library Boost!")
+        message ("@@ Boost_ROOT = $ENV{Boost_ROOT}")
+    else ()
+        message (FATAL_ERROR
+            "CMake couldn't find library Boost! "
+            "If it have been installed and you know where it is, "
+            "set Boost_ROOT (e.g. in .bashrc) to it."
+        )
+    endif ()
+endif ()
+
 # GeoMTK
 add_subdirectory ("${PROJECT_SOURCE_DIR}/external/geomtk")
 include_directories (
@@ -106,7 +137,7 @@ endforeach ()
 # ------------------------------------------------------------------------------
 # library targets
 add_library (lady STATIC ${headers} ${sources})
-target_link_libraries (lady mlpack nlopt)
+target_link_libraries (lady mlpack nlopt CGAL)
 add_dependencies (lady geomtk)
 
 # ------------------------------------------------------------------------------

@@ -4,16 +4,17 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 
 begin
 
-    start_time = 300
-    end_time = 300
+    start_time = 0
+    end_time = 0
     time_step = 1
+    file_prefix = "tracers.solid_rotation.true_solution"
 
     PI = atan(1.0)*4
     RAD = PI/180
 
     fs = systemfunc("for (( i = "+start_time+"; i <= "+end_time+"; "+ \
         "i = i+"+time_step+" )); "+ \
-        "do printf '../build/Debug/tracers.%3.3d.nc\n' $i; done")
+        "do printf '../build/Debug/"+file_prefix+".%3.3d.nc\n' $i; done")
 
     f = addfile(fs(0), "r")
 
@@ -27,11 +28,11 @@ begin
 
     wks = gsn_open_wks("pdf", "tracers")
 
-    point_size = 0.002
+    point_size = 0.005
 
     res_map = True
     res_map@gsnFrame = False
-    res_map@mpCenterLonF = 180.0d0
+    res_map@mpCenterLonF = 180.0
     res_map@mpOutlineOn = False
 
     res_tracer = True
@@ -49,14 +50,14 @@ begin
     res_s2@gsMarkerSizeF = point_size
     res_s2@gsLineColor = "red"
 
-    check = ispan(0, num_tracer-1, 1)
-    ;check = (/910/)
+    ;check = ispan(0, num_tracer-1, 100)
+    ;check = (/5000/)
 
     do l = 0, num_time-1, 1
         system("echo time step: "+l)
         f = addfile(fs(l), "r")
-        ; res_map@gsnPolar = "SH"
-        ; res_map@mpMaxLatF = -0
+        ;res_map@gsnPolar = "SH"
+        ;res_map@mpMaxLatF = -0.0
         ; if (isdefined("check")) then
         ;     res_map@mpProjection = "Satellite"
         ;     res_map@mpCenterLonF = f->c(check(0),0)/RAD
@@ -69,7 +70,7 @@ begin
         ; end if
         map = gsn_csm_map(wks, res_map)
         ; tracer centroid
-        do i = 0, num_tracer-1
+        do i = 0, num_tracer-1, 1
             c = (/f->c(i,0),f->c(i,1)/)/RAD
             if (isdefined("check") .and. any(check .eq. i)) then
                 res_tracer@gsMarkerColor = "blue"
@@ -84,9 +85,9 @@ begin
         end if
         do k = 0, dimsizes(check)-1
             i = check(k)
-            if (f->m(i,0) .lt. 0.0001) then
-                continue
-            end if
+            ;if (f->m(i,0) .lt. 0.0001) then
+            ;    continue
+            ;end if
             do j = 0, 3
                 s = f->s1(i,j,:)/RAD
                 gsn_polymarker(wks, map, s(0), s(1), res_s1)

@@ -202,10 +202,17 @@ void AdvectionTestCase::calcInitCond(AdvectionManager &advectionManager) {
         advectionManager.registerTracer(name.run("%d", i), "N/A",
                                         brief.run("%d", i));
     }
-    advectionManager.input(q);
+    TimeLevelIndex<2> initTimeIdx;
+    advectionManager.input(initTimeIdx, q);
 }
-    
-void AdvectionTestCase::calcSolution(double time, TimeLevelIndex<2> &timeIdx,
+
+void AdvectionTestCase::calcSolution(double time,
+                                     const TimeLevelIndex<2> &timeIdx,
+                                     AdvectionManager &advectionManager) {
+}
+
+void AdvectionTestCase::calcSolution(double time,
+                                     const TimeLevelIndex<2> &timeIdx,
                                      LADY_SCALAR_FIELD &q) {
     REPORT_ERROR("calcSolution is not available!");
 }

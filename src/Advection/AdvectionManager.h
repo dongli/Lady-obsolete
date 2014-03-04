@@ -59,10 +59,10 @@ public:
     /**
      *  Input one tracer species from given scalar field.
      *
-     *  @param name the name of the tracer.
-     *  @param q    the input scalar field.
+     *  @param timeIdx the time level index.
+     *  @param q       the input scalar field.
      */
-    void input(vector<LADY_SCALAR_FIELD*> &q);
+    void input(const TimeLevelIndex<2> &timeIdx, vector<LADY_SCALAR_FIELD*> &q);
 
     /**
      *  Output tracers on old time level into netCDF file.

@@ -1,7 +1,8 @@
 #include "lady.h"
 
-#define USE_DEFORMATION_TEST_CASE 1
-#define USE_SOLID_ROTATION_TEST_CASE 0
+#define USE_DEFORMATION_TEST_CASE 0
+#define USE_SOLID_ROTATION_TEST_CASE 1
+#define CALCULATE_SOLUTION 1
 
 int main(int argc, const char *argv[])
 {
@@ -12,7 +13,7 @@ int main(int argc, const char *argv[])
     lady::SolidRotationTestCase testCase;
 #endif
     lady::AdvectionManager advectionManager;
-    geomtk::StampString o1("tracers.", ".nc"), o2("velocity.", ".nc");
+    geomtk::StampString o1("tracers.solid_rotation.true_solution.", ".nc");
     geomtk::TimeManager timeManager;
     geomtk::TimeLevelIndex<2> oldTimeIdx;
     // -------------------------------------------------------------------------
@@ -30,10 +31,13 @@ int main(int argc, const char *argv[])
     // integration loop
     while (!timeManager.isFinished()) {
         geomtk::TimeLevelIndex<2> newTimeIdx = oldTimeIdx+1;
-        testCase.advance(timeManager.getSeconds()+timeManager.getStepSize(),
-                         newTimeIdx);
+        double time = timeManager.getSeconds()+timeManager.getStepSize();
+        testCase.advance(time, newTimeIdx);
         advectionManager.advance(timeManager.getStepSize(), newTimeIdx,
                                  testCase.getVelocityField());
+#if CALCULATE_SOLUTION == 1
+        testCase.calcSolution(time, newTimeIdx, advectionManager);
+#endif
         timeManager.advance();
         oldTimeIdx.shift();
         advectionManager.output(o1.run("%3.3d", timeManager.getNumStep()), oldTimeIdx);

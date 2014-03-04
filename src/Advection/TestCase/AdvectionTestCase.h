@@ -58,22 +58,33 @@ public:
     virtual void calcInitCond(AdvectionManager &advectionManager);
 
     /**
-     *  Calculate the solution of the test case if any.
-     *
-     *  @param time    the time in seconds.
-     *  @param timeIdx the time level index.
-     *  @param q       the output solution.
-     */
-    virtual void calcSolution(double time, TimeLevelIndex<2> &timeIdx,
-                              LADY_SCALAR_FIELD &q);
-
-    /**
      *  Advance the test case one time step.
      *
      *  @param time    the time in seconds.
      *  @param timeIdx the time level index.
      */
     virtual void advance(double time, const TimeLevelIndex<2> &timeIdx) = 0;
+
+    /**
+     *  Calculate the solution of the test case if any, and reset the tracers
+     *  for latter outputting.
+     *
+     *  @param time             the time in seconds.
+     *  @param timeIdx          the time level index.
+     *  @param advectionManager the advection manager.
+     */
+    virtual void calcSolution(double time, const TimeLevelIndex<2> &timeIdx,
+                              AdvectionManager &advectionManager);
+protected:
+    /**
+     *  Calculate the solution of the test case if any.
+     *
+     *  @param time    the time in seconds.
+     *  @param timeIdx the time level index.
+     *  @param q       the output solution.
+     */
+    virtual void calcSolution(double time, const TimeLevelIndex<2> &timeIdx,
+                              LADY_SCALAR_FIELD &q);
 };
 
 }

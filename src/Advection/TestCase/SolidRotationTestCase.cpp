@@ -54,11 +54,8 @@ SolidRotationTestCase::SolidRotationTestCase() {
     axisPole = new LADY_SPACE_COORD(2);
     c0 = new LADY_SPACE_COORD(2);
     cr0 = new LADY_SPACE_COORD(2);
-    double lon, lat;
-    lon = M_PI; lat = M_PI_2-alpha;
-    axisPole->setCoord(lon, lat);
-    lon = M_PI_2; lat = 0;
-    c0->setCoord(lon, lat);
+    axisPole->setCoord(M_PI,  M_PI_2-alpha);
+    c0->setCoord(M_PI_2, 0.0);
     domain->rotate(*axisPole, *c0, *cr0);
     R = domain->getRadius()/3;
     H0 = 1000;
@@ -148,9 +145,18 @@ void SolidRotationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     AdvectionTestCase::calcInitCond(advectionManager);
 }
 
-void SolidRotationTestCase::calcSolution(double time, TimeLevelIndex<2> &timeIdx,
+void SolidRotationTestCase::calcSolution(double time,
+                                         const TimeLevelIndex<2> &timeIdx,
+                                         AdvectionManager &advectionManager) {
+    calcSolution(time, timeIdx, *q0);
+    advectionManager.input(timeIdx, q);
+    REPORT_NOTICE("Overwrite tracers with the true solution.");
+}
+
+void SolidRotationTestCase::calcSolution(double time,
+                                         const TimeLevelIndex<2> &timeIdx,
                                          LADY_SCALAR_FIELD &q) {
-    (*cr0)(0) += angleSpeed*time;
+    cr0->setCoordComp(0, angleSpeed*time);
     domain->rotateBack(*axisPole, *c0, *cr0);
     for (int j = 0; j < mesh->getNumGrid(1, CENTER); ++j) {
         for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {

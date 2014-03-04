@@ -5,11 +5,11 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 begin
 
     start_time = 0
-    end_time = 300
-    time_step = 300
+    end_time = 0
+    time_step = 1
     fs = systemfunc("for (( i = "+start_time+"; i <= "+end_time+"; "+ \
         "i = i+"+time_step+" )); "+ \
-        "do printf '../build/Debug/tracers.%3.3d.nc\n' $i; done")
+        "do printf '../build/Debug/tracers.solid_rotation.true_solution.%3.3d.nc\n' $i; done")
 
     num_time = dimsizes(fs)
 
@@ -18,23 +18,29 @@ begin
     gsn_define_colormap(wks, "WhBlGrYeRe")
 
     res = True
+    res@gsnMaximize = True
     res@cnLinesOn = False
     res@cnFillOn = True
     res@gsnSpreadColors = True
     res@cnLevelSelectionMode = "ManualLevels"
     res@cnMinLevelValF = 0.0
-    res@cnMaxLevelValF = 750.0
+    res@cnMaxLevelValF = 1000.0
     res@cnLevelSpacingF = 50.0
+    ;res@cnMaxLevelValF = 1.1
+    ;res@cnLevelSpacingF = 0.05
     res@gsnPolar = "SH"
-    res@mpMaxLatF = -20
+    res@mpMaxLatF = -0
+    res@mpCenterLonF = 180.0
+    res@mpOutlineOn = False
 
     do l = 0, num_time-1
         system("echo time step: "+l)
         f = addfile(fs(l), "r")
         num_lat = dimsizes(f->lat)
-        q = f->q1/f->q0
-        copy_VarCoords(f->q1, q)
-        ;res@gsnRightString = "Max:"+sprintf("%8.1f", max(q(1:num_lat-2,:)))
+        q = f->q0
+        ;q = f->q1/f->q0
+        copy_VarCoords(f->q0, q)
+        res@gsnRightString = "Max:"+sprintf("%8.1f", max(q(1:num_lat-2,:)))
         plot = gsn_csm_contour_map(wks, q(1:num_lat-2,:), res)
     end do
 
