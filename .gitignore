@@ -18,10 +18,8 @@ doc/html
 doc/latex
 
 # build files
-Debug
-make
 build
+build.make
 
 *.nc
 *.pdf
-mlpack-1.0.8

@@ -22,7 +22,8 @@ protected:
     /**
      *  Remapping parameters
      */
-    list<TracerMeshCell*> cells;
+    int numConnectedCell;
+    vector<TracerMeshCell*> connectedCells;
     double totalRemapWeight;
 
     /**
@@ -52,14 +53,16 @@ public:
      *
      *  @return The mesh index.
      */
-    LADY_MESH_INDEX& getMeshIndex(const TimeLevelIndex<2> &timeIdx);
+    LADY_MESH_INDEX& getMeshIndex(const TimeLevelIndex<2> &timeIdx) {
+        return *idx.getLevel(timeIdx);
+    }
 
     /**
      *  Get the skeleton of tracer.
      *
      *  @return The skeleton object.
      */
-    TracerSkeleton& getSkeleton();
+    TracerSkeleton& getSkeleton() { return *skeleton; }
 
     /**
      *  Reset the connected cells to empty for later updating.
@@ -79,7 +82,9 @@ public:
      *
      *  @return The connected mesh cell list.
      */
-    list<TracerMeshCell*>& getConnectedCells() { return cells; }
+    vector<TracerMeshCell*>& getConnectedCells() { return connectedCells; }
+    
+    int getNumConnectedCell() const { return numConnectedCell; }
 
     double getTotalRemapWeight() const;
 

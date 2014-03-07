@@ -10,6 +10,7 @@ Tracer::Tracer(int numDim) : Parcel(numDim) {
         idx.getLevel(l) = new LADY_MESH_INDEX(numDim);
     }
     skeleton = new TracerSkeleton(this, numDim);
+    numConnectedCell = 0;
     deformMatrixFitting = NULL;
 }
 
@@ -59,16 +60,8 @@ Tracer& Tracer::operator=(const Tracer &other) {
     return *this;
 }
 
-LADY_MESH_INDEX& Tracer::getMeshIndex(const TimeLevelIndex<2> &timeIdx) {
-    return *(idx.getLevel(timeIdx));
-}
-
-TracerSkeleton& Tracer::getSkeleton() {
-    return *skeleton;
-}
-
 void Tracer::resetConnectedCells() {
-    cells.clear();
+    numConnectedCell = 0;
     totalRemapWeight = 0.0;
 }
 
@@ -79,7 +72,12 @@ void Tracer::resetSpeciesMass() {
 }
 
 void Tracer::connect(TracerMeshCell *cell, double weight) {
-    cells.push_back(cell);
+    if (numConnectedCell == connectedCells.size()) {
+        connectedCells.push_back(cell);
+    } else {
+        connectedCells[numConnectedCell] = cell;
+    }
+    numConnectedCell++;
     totalRemapWeight += weight;
 }
 
@@ -88,36 +86,124 @@ double Tracer::getTotalRemapWeight() const {
     return totalRemapWeight;
 }
 
+//void Tracer::updateDeformMatrix(const LADY_DOMAIN &domain,
+//                                const TimeLevelIndex<2> &timeIdx,
+//                                bool isFirstTime) {
+//    if (isFirstTime) {
+//        deformMatrixFitting = new DeformMatrixFitting(domain, this);
+//        *q.getLevel(1) = *q.getLevel(0);
+//        *idx.getLevel(1) = *idx.getLevel(0);
+//        for (int i = 0; i < skeleton->getBodyCoords().size(); ++i) {
+//            *skeleton->getSpaceCoords(timeIdx+1)[i] = *skeleton->getSpaceCoords(timeIdx)[i];
+//        }
+//        deformMatrixFitting->fit(timeIdx+1, this);
+//        *H.getLevel(0) = *H.getLevel(1);
+//    } else {
+//        deformMatrixFitting->fit(timeIdx, this);
+//    }
+//    detH.getLevel(timeIdx) = det(*H.getLevel(timeIdx));
+//    *invH.getLevel(timeIdx) = inv(*H.getLevel(timeIdx));
+//    updateShapeSize(domain, timeIdx);
+//}
+    
 void Tracer::updateDeformMatrix(const LADY_DOMAIN &domain,
                                 const TimeLevelIndex<2> &timeIdx,
                                 bool isFirstTime) {
-    if (isFirstTime) {
-        deformMatrixFitting = new DeformMatrixFitting(domain, this);
-        *q.getLevel(1) = *q.getLevel(0);
-        *idx.getLevel(1) = *idx.getLevel(0);
-        for (int i = 0; i < skeleton->getYs().size(); ++i) {
-            *skeleton->getXs(timeIdx+1)[i] = *skeleton->getXs(timeIdx)[i];
+    skeleton->updateLocalCoord(domain, timeIdx);
+    const vector<vec> &x = skeleton->getLocalCoords(timeIdx);
+    LADY_MATRIX &H0 = *H.getLevel(timeIdx);
+    if (domain.getNumDim() == 2) {
+        // weights for the four matrix members
+//        double w1 = norm(x[2], 2);
+//        double w2 = norm(x[3], 2);
+//        double w3 = norm(x[0], 2);
+//        double w4 = norm(x[1], 2);
+        double w1 = 0.5;
+        double w2 = 0.5;
+        double w3 = 0.5;
+        double w4 = 0.5;
+
+        double h11_1 = -x[0][0];
+        double h21_1 = -x[0][1];
+        double h11_3 =  x[2][0];
+        double h21_3 =  x[2][1];
+        double h12_2 = -x[1][0];
+        double h22_2 = -x[1][1];
+        double h12_4 =  x[3][0];
+        double h22_4 =  x[3][1];
+        
+        while (true) {
+            H0(0, 0) = (h11_1*w1+h11_3*w3)/(w1+w3);
+            H0(0, 1) = (h12_2*w2+h12_4*w4)/(w2+w4);
+            H0(1, 0) = (h21_1*w1+h21_3*w3)/(w1+w3);
+            H0(1, 1) = (h22_2*w2+h22_4*w4)/(w2+w4);
+            detH.getLevel(timeIdx) = det(H0);
+            if (detH.getLevel(timeIdx) < 0) {
+                double detH_12 = h11_1*h22_2-h21_1*h12_2;
+                double detH_14 = h11_1*h22_4-h21_1*h12_4;
+                double detH_32 = h11_3*h22_2-h21_3*h12_2;
+                double detH_34 = h11_3*h22_4-h21_3*h12_4;
+                if (detH_12 < 0 && detH_14 < 0 && detH_32 < 0 && detH_34 < 0) {
+                    REPORT_ERROR("Tracer " << ID << " has bad deformation " <<
+                                 "matrix with negative determinant, and can " <<
+                                 "not be adjusted!");
+                }
+                if (detH_12 < 0 || detH_14 < 0) {
+                    w1 *= 0.5;
+                }
+                if (detH_12 < 0 || detH_32 < 0) {
+                    w2 *= 0.5;
+                }
+                if (detH_32 < 0 || detH_34 < 0) {
+                    w3 *= 0.5;
+                }
+                if (detH_14 < 0 || detH_34 < 0) {
+                    w4 *= 0.5;
+                }
+                REPORT_WARNING("Tracer " << ID << " encounter bad deformation " <<
+                               "matrix, but can be adjusted.");
+            } else {
+                break;
+            }
         }
-        deformMatrixFitting->fit(timeIdx+1, this);
-        *H.getLevel(0) = *H.getLevel(1);
-    } else {
-        deformMatrixFitting->fit(timeIdx, this);
+        
+//        if (ID == 1768) {
+//            std::ofstream file("x.dat");
+//            for (int i = 0; i < x.size(); ++i) file << x[i] << endl;
+//            file.close();
+//            file.open("H.dat");
+//            file << H0 << endl;
+//            H0(0, 0) = h11_1; H0(0, 1) = h12_2; H0(1, 0) = h21_1; H0(1, 1) = h22_2;
+//            file << H0 << endl;
+//            H0(0, 0) = h11_1; H0(0, 1) = h12_4; H0(1, 0) = h21_1; H0(1, 1) = h22_4;
+//            file << H0 << endl;
+//            H0(0, 0) = h11_3; H0(0, 1) = h12_2; H0(1, 0) = h21_3; H0(1, 1) = h22_2;
+//            file << H0 << endl;
+//            H0(0, 0) = h11_3; H0(0, 1) = h12_4; H0(1, 0) = h21_3; H0(1, 1) = h22_4;
+//            file << H0 << endl;
+//            file.close();
+//            CHECK_POINT
+//        }
+    } else if (domain.getNumDim() == 3) {
+        REPORT_ERROR("Under construction!");
     }
-    detH.getLevel(timeIdx) = det(*H.getLevel(timeIdx));
-    *invH.getLevel(timeIdx) = inv(*H.getLevel(timeIdx));
+    *invH.getLevel(timeIdx) = inv(H0);
     updateShapeSize(domain, timeIdx);
 }
     
 void Tracer::selfInspect(const LADY_DOMAIN &domain,
                          const TimeLevelIndex<2> &timeIdx) {
-    static const double offsetThreshold = 1.0*RAD/domain.getRadius();
-    vector<LADY_BODY_COORD*> &ys = skeleton->getYs();
-    vector<LADY_SPACE_COORD*> &xs = skeleton->getXs(timeIdx);
+    static const double threshold = 0.2;
+    const vector<LADY_BODY_COORD*> &ys = skeleton->getBodyCoords();
+    vector<LADY_SPACE_COORD*> &xs = skeleton->getSpaceCoords(timeIdx);
     for (int i = 0; i < ys.size(); ++i) {
-        LADY_SPACE_COORD x(domain.getNumDim());
-        getSpaceCoord(domain, timeIdx, *ys[i], x);
-        double offset = domain.calcDistance(*xs[i], x);
-        if (offset >= offsetThreshold) {
+        LADY_BODY_COORD y(domain.getNumDim());
+        getBodyCoord(domain, timeIdx, *xs[i], y);
+        double bias = norm(y()-(*ys[i])(), 2);
+        if (bias >= threshold) {
+            cout << bias << endl;
+            ys[i]->print();
+            y.print();
             cout << ID << endl;
         }
     }

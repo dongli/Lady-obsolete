@@ -17,7 +17,7 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
     this->domain = &domain;
     int numTracer = 0;
     // calculate the total number of tracers
-    if (dynamic_cast<const geomtk::SphereDomain*>(&domain) != NULL) {
+    if (LADY_IS_SPHERE_DOMAIN) {
         // Note: Use reduced lat-lon mesh as the initial distribution of
         //       tracers.
         if (numTracerX%2 != 0) {
@@ -56,7 +56,7 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
         // set coordinate
         LADY_SPACE_COORD &x0 = (*tracer)->getX(initTimeIdx);
         vec h(domain.getNumDim());
-        if (dynamic_cast<const geomtk::SphereDomain*>(&domain) != NULL) {
+        if (LADY_IS_SPHERE_DOMAIN) {
             // Note: Use reduced lat-lon mesh as the initial distribution of
             //       tracers.
             double dlat = domain.getAxisSpan(1)/numTracerY;
@@ -148,7 +148,7 @@ void TracerManager::output(const string &fileName,
     int mDimIds[2], mVarId;
     int sDimIds[3], s1VarId, s2VarId;
     char str[100];
-    int l, numSkel2 = 50;
+    int l, numSkel2 = 4;
     double *data;
     LADY_LIST<Tracer*>::iterator tracer;
 
@@ -303,7 +303,7 @@ void TracerManager::output(const string &fileName,
         l = 0;
         for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
             TracerSkeleton &s = (*tracer)->getSkeleton();
-            vector<LADY_SPACE_COORD*> &xs = s.getXs(oldTimeIdx);
+            vector<LADY_SPACE_COORD*> &xs = s.getSpaceCoords(oldTimeIdx);
             for (int i = 0; i < xs.size(); ++i) {
                 for (int m = 0; m < domain->getNumDim(); ++m) {
                     data[l++] = (*xs[i])(m);

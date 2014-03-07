@@ -9,9 +9,11 @@ TracerSkeleton::TracerSkeleton(Tracer *host, int numDim) {
     for (int l = 0; l < x.getNumLevel(); ++l) {
         x.getLevel(l).resize(NUM_SKELETON_POINT);
         idx.getLevel(l).resize(NUM_SKELETON_POINT);
+        xl.getLevel(l).resize(NUM_SKELETON_POINT);
         for (int i = 0; i < x.getLevel(l).size(); ++i) {
             x.getLevel(l)[i] = new LADY_SPACE_COORD(numDim);
             idx.getLevel(l)[i] = new LADY_MESH_INDEX(numDim);
+            xl.getLevel(l)[i].set_size(numDim);
         }
     }
     y.resize(NUM_SKELETON_POINT);
@@ -65,41 +67,52 @@ void TracerSkeleton::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
                           double size) {
     // set the body and initial spatial coordinates of skeleton points
     TimeLevelIndex<2> initTimeIdx;
-    if (dynamic_cast<const geomtk::SphereDomain*>(&domain) != NULL) {
-        if (domain.getNumDim() == 2) {
-            (*y[0])() << -1.0 <<  0.0 << arma::endr;
-            (*y[1])() <<  0.0 << -1.0 << arma::endr;
-            (*y[2])() <<  1.0 <<  0.0 << arma::endr;
-            (*y[3])() <<  0.0 <<  1.0 << arma::endr;
-            const LADY_SPACE_COORD &x0 = host->getX(initTimeIdx);
-            double dtheta = PI2/y.size(), lon, lat;
+    const LADY_SPACE_COORD &x0 = host->getX(initTimeIdx);
+    if (domain.getNumDim() == 2) {
+        (*y[0])() << -1.0 <<  0.0 << arma::endr;
+        (*y[1])() <<  0.0 << -1.0 << arma::endr;
+        (*y[2])() <<  1.0 <<  0.0 << arma::endr;
+        (*y[3])() <<  0.0 <<  1.0 << arma::endr;
+        double dtheta = PI2/y.size();
+        if (LADY_IS_SPHERE_DOMAIN) {
+            double lon, lat = M_PI_2-size/domain.getRadius();
             LADY_SPACE_COORD xr(domain.getNumDim());
             for (int i = 0; i < y.size(); ++i) {
                 lon = i*dtheta;
-                lat = M_PI_2-size/domain.getRadius();
                 xr.setCoord(lon, lat);
                 domain.rotateBack(x0, *x.getLevel(initTimeIdx)[i], xr);
-                x.getLevel(initTimeIdx)[i]->transformToCart(domain);
-                idx.getLevel(initTimeIdx)[i]->locate(mesh, *x.getLevel(initTimeIdx)[i]);
+                x.getLevel(initTimeIdx)[i]->transformToCart(domain); // TODO: Do we need this?
             }
-        } else if (domain.getNumDim() == 3) {
+        } else {
             REPORT_ERROR("Under construction!");
+            for (int i = 0; i < y.size(); ++i) {
+                double theta = i*dtheta;
+                (*x.getLevel(initTimeIdx)[i])(0) = size*cos(theta)+x0(0);
+                (*x.getLevel(initTimeIdx)[i])(1) = size*sin(theta)+x0(1);
+            }
         }
-    } else {
+    } else if (domain.getNumDim() == 3) {
         REPORT_ERROR("Under construction!");
     }
-}
-
-vector<LADY_SPACE_COORD*>& TracerSkeleton::getXs(const TimeLevelIndex<2> &timeIdx) {
-    return x.getLevel(timeIdx);
-}
-
-vector<LADY_BODY_COORD*>& TracerSkeleton::getYs() {
-    return y;
+    for (int i = 0; i < y.size(); ++i) {
+        idx.getLevel(initTimeIdx)[i]->locate(mesh, *x.getLevel(initTimeIdx)[i]);
+    }
 }
     
-vector<LADY_MESH_INDEX*>& TracerSkeleton::getIdxs(const TimeLevelIndex<2> &timeIdx) {
-    return idx.getLevel(timeIdx);
+void TracerSkeleton::updateLocalCoord(const LADY_DOMAIN &domain,
+                                      const TimeLevelIndex<2> &timeIdx) {
+    const LADY_SPACE_COORD &x0 = host->getX(timeIdx);
+    if (LADY_IS_SPHERE_DOMAIN) {
+        for (int i = 0; i < x.getLevel(timeIdx).size(); ++i) {
+            domain.project(geomtk::SphereDomain::STEREOGRAPHIC,
+                           x0, *x.getLevel(timeIdx)[i],
+                           xl.getLevel(timeIdx)[i]);
+        }
+    } else {
+        for (int i = 0; i < x.getLevel(timeIdx).size(); ++i) {
+            xl.getLevel(timeIdx)[i] = (*x.getLevel(timeIdx)[i])()-x0();
+        }
+    }
 }
     
 }

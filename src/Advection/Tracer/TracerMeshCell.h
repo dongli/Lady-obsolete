@@ -12,10 +12,9 @@ protected:
     double volume; //>! cell volume for converting density and mass
     vector<double> m; //>! species mass array
     // remapping parameters
-    int maxNumConnectedTracer;
     int numConnectedTracer;
-    Tracer **connectedTracers;
-    double *remapWeights;
+    vector<Tracer*> connectedTracers;
+    vector<double> remapWeights;
     double totalRemapWeight;
 public:
     TracerMeshCell();

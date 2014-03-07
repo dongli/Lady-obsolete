@@ -1,9 +1,6 @@
 #include "AdvectionManager.h"
 #include "ShapeFunction.h"
 #include "TracerSkeleton.h"
-#ifdef DEBUG
-#include "DeformMatrixFitting.h"
-#endif
 
 namespace lady {
 
@@ -197,10 +194,24 @@ void AdvectionManager::diagnose(const TimeLevelIndex<2> &timeIdx) {
 
 void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
                                const geomtk::RLLVelocityField &V) {
+    static clock_t time1, time2;
+    
+    time1 = clock();
     integrate_RK4(dt, newTimeIdx, V);
+    time2 = clock();
+    REPORT_NOTICE("integrate_RK uses " << setw(6) << setprecision(2) << (double)(time2-time1)/CLOCKS_PER_SEC << " seconds.");
+    
+    time1 = clock();
     connectTracersAndMesh(newTimeIdx);
+    time2 = clock();
+    REPORT_NOTICE("connectTracersAndMesh uses " << setw(6) << setprecision(2) << (double)(time2-time1)/CLOCKS_PER_SEC << " seconds.");
+    
+    time1 = clock();
     remapTracersToMesh(newTimeIdx);
-    diagnose(newTimeIdx);
+    time2 = clock();
+    REPORT_NOTICE("remapTracersToMesh uses " << setw(6) << setprecision(2) << (double)(time2-time1)/CLOCKS_PER_SEC << " seconds.");
+    
+//    diagnose(newTimeIdx);
 }
 
 // -----------------------------------------------------------------------------
@@ -235,17 +246,17 @@ void AdvectionManager::integrate_RK4(double dt,
         for (; tracer != tracerManager.tracers.end(); ++tracer) {
 #pragma omp task
             {
+                LADY_VELOCITY v1(domain.getNumDim());
+                LADY_VELOCITY v2(domain.getNumDim());
+                LADY_VELOCITY v3(domain.getNumDim());
+                LADY_VELOCITY v4(domain.getNumDim());
+                LADY_VELOCITY v(domain.getNumDim());
                 // -----------------------------------------------------------------
                 // update location and deformation matrix of tracer
                 LADY_SPACE_COORD &x0 = (*tracer)->getX(oldTimeIdx);
                 LADY_SPACE_COORD &x1 = (*tracer)->getX(newTimeIdx);
                 LADY_MESH_INDEX &idx0 = (*tracer)->getMeshIndex(oldTimeIdx);
                 LADY_MESH_INDEX &idx1 = (*tracer)->getMeshIndex(newTimeIdx);
-                LADY_VELOCITY v1(domain.getNumDim());
-                LADY_VELOCITY v2(domain.getNumDim());
-                LADY_VELOCITY v3(domain.getNumDim());
-                LADY_VELOCITY v4(domain.getNumDim());
-                LADY_VELOCITY v(domain.getNumDim());
                 // TODO: Should we hide the following codes? Because they are
                 //       related to sphere domain.
                 if (idx0.isOnPole()) {
@@ -277,16 +288,11 @@ void AdvectionManager::integrate_RK4(double dt,
                 // -------------------------------------------------------------
                 // update skeleton points of tracer
                 TracerSkeleton &s = (*tracer)->getSkeleton();
-                vector<LADY_SPACE_COORD*> &x0s = s.getXs(oldTimeIdx);
-                vector<LADY_SPACE_COORD*> &x1s = s.getXs(newTimeIdx);
-                vector<LADY_MESH_INDEX*> &idx0s = s.getIdxs(oldTimeIdx);
-                vector<LADY_MESH_INDEX*> &idx1s = s.getIdxs(newTimeIdx);
+                vector<LADY_SPACE_COORD*> &x0s = s.getSpaceCoords(oldTimeIdx);
+                vector<LADY_SPACE_COORD*> &x1s = s.getSpaceCoords(newTimeIdx);
+                vector<LADY_MESH_INDEX*> &idx0s = s.getMeshIdxs(oldTimeIdx);
+                vector<LADY_MESH_INDEX*> &idx1s = s.getMeshIdxs(newTimeIdx);
                 for (int i = 0; i < x0s.size(); ++i) {
-                    LADY_VELOCITY v1(domain.getNumDim());
-                    LADY_VELOCITY v2(domain.getNumDim());
-                    LADY_VELOCITY v3(domain.getNumDim());
-                    LADY_VELOCITY v4(domain.getNumDim());
-                    LADY_VELOCITY v(domain.getNumDim());
                     if (idx0s[i]->isOnPole()) {
                         idx0s[i]->setMoveOnPole(true);
                         idx1s[i]->setMoveOnPole(true);
@@ -296,37 +302,34 @@ void AdvectionManager::integrate_RK4(double dt,
                         idx1s[i]->setMoveOnPole(false);
                     }
                     regrid->run(BILINEAR, oldTimeIdx, V, *x0s[i], v1, idx0s[i]);
-                    // =============================================================
+                    // =========================================================
                     // stage 1
                     mesh.move(*x0s[i], dt05, v1, *idx0s[i], *x1s[i]);
                     idx1s[i]->locate(mesh, *x1s[i]);
                     regrid->run(BILINEAR, halfTimeIdx, V, *x1s[i], v2, idx1s[i]);
-                    // =============================================================
+                    // =========================================================
                     // stage 2
                     mesh.move(*x0s[i], dt05, v2, *idx0s[i], *x1s[i]);
                     idx1s[i]->locate(mesh, *x1s[i]);
                     regrid->run(BILINEAR, halfTimeIdx, V, *x1s[i], v3, idx1s[i]);
-                    // =============================================================
+                    // =========================================================
                     // stage 3
                     mesh.move(*x0s[i], dt, v3, *idx0s[i], *x1s[i]);
                     idx1s[i]->locate(mesh, *x1s[i]);
                     regrid->run(BILINEAR, newTimeIdx, V, *x1s[i], v4, idx1s[i]);
-                    // =============================================================
+                    // =========================================================
                     // stage 4
                     v = (v1+v2*2.0+v3*2.0+v4)/6.0;
                     mesh.move(*x0s[i], dt, v, *idx0s[i], *x1s[i]);
                     idx1s[i]->locate(mesh, *x1s[i]);
                     x1s[i]->transformToCart(domain);
                 }
-                // -----------------------------------------------------------------
+                // -------------------------------------------------------------
                 (*tracer)->updateDeformMatrix(domain, newTimeIdx);
-                //(*tracer)->selfInspect(domain, newTimeIdx);
+//                (*tracer)->selfInspect(domain, newTimeIdx);
             }
         }
     }
-#ifdef DEBUG
-    REPORT_NOTICE("Maximum fitting objective value is " << DeformMatrixFitting::maxObjectiveValue << ".");
-#endif
 }
 
 void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
@@ -357,11 +360,11 @@ void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
         a.Search(r, neighbors, distances);
         // =====================================================================
         // set data structures for the tracer and its neighbor cells
+        LADY_BODY_COORD y(domain.getNumDim());
         for (int i = 0; i < neighbors[0].size(); ++i) {
             int cellIdx = cellCoordsMap[neighbors[0][i]];
             TracerMeshCell *cell = &(*tracerMeshCells)(timeIdx, cellIdx);
             // calculate the tracer shape function for the cell
-            LADY_BODY_COORD y(domain.getNumDim());
             (*tracer)->getBodyCoord(domain, timeIdx, cell->getCoord(), y);
             double f = (*tracer)->getShapeFunction(timeIdx, y);
             if (f > 0.0) {
@@ -423,15 +426,14 @@ void AdvectionManager::remapMeshToTracers(const TimeLevelIndex<2> &timeIdx) {
     LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();
     for (; tracer != tracerManager.tracers.end(); ++tracer) {
         (*tracer)->resetSpeciesMass();
-        const list<TracerMeshCell*> &cells = (*tracer)->getConnectedCells();
+        const vector<TracerMeshCell*> &cells = (*tracer)->getConnectedCells();
         assert(cells.size() != 0);
-        list<TracerMeshCell*>::const_iterator cell;
-        for (cell = cells.begin(); cell != cells.end(); ++cell) {
-            double weight = (*cell)->getRemapWeight(*tracer)/
-                            (*cell)->getTotalRemapWeight();
+        for (int i = 0; i < (*tracer)->getNumConnectedCell(); ++i) {
+            double weight = cells[i]->getRemapWeight(*tracer)/
+                            cells[i]->getTotalRemapWeight();
             for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
                 double &m = (*tracer)->getSpeciesMass(s);
-                m += (*cell)->getSpeciesMass(s)*weight;
+                m += cells[i]->getSpeciesMass(s)*weight;
             }
         }
     }
@@ -443,12 +445,12 @@ void AdvectionManager::remapTracersToMesh(const TimeLevelIndex<2> &timeIdx) {
     }
     LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();
     for (; tracer != tracerManager.tracers.end(); ++tracer) {
-        list<TracerMeshCell*>::iterator cell = (*tracer)->getConnectedCells().begin();
-        for (; cell != (*tracer)->getConnectedCells().end(); ++cell) {
-            double weight = (*cell)->getRemapWeight(*tracer)/
+        vector<TracerMeshCell*> &cells = (*tracer)->getConnectedCells();
+        for (int i = 0; i < (*tracer)->getNumConnectedCell(); ++i) {
+            double weight = cells[i]->getRemapWeight(*tracer)/
                             (*tracer)->getTotalRemapWeight();
             for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
-                double &m = (*cell)->getSpeciesMass(s);
+                double &m = cells[i]->getSpeciesMass(s);
                 m += (*tracer)->getSpeciesMass(s)*weight;
             }
         }

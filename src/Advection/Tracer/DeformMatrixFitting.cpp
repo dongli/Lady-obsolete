@@ -10,7 +10,7 @@ namespace lady {
 DeformMatrixFitting::DeformMatrixFitting(const LADY_DOMAIN &domain,
                                          Tracer *tracer) {
     data.domain = &domain;
-    data.x.resize(tracer->getSkeleton().getYs().size());
+    data.x.resize(tracer->getSkeleton().getBodyCoords().size());
     data.y.resize(data.x.size());
     for (int i = 0; i < data.x.size(); ++i) {
         data.x[i].set_size(domain.getNumDim());
@@ -18,7 +18,7 @@ DeformMatrixFitting::DeformMatrixFitting(const LADY_DOMAIN &domain,
     }
     // y is fixed
     for (int i = 0; i < data.y.size(); ++i) {
-        data.y[i] = (*tracer->getSkeleton().getYs()[i])();
+        data.y[i] = (*tracer->getSkeleton().getBodyCoords()[i])();
     }
     // create optimization object
     a = new nlopt::opt(nlopt::LD_SLSQP, pow(domain.getNumDim(), 2));
@@ -47,10 +47,10 @@ void DeformMatrixFitting::fit(const TimeLevelIndex<2> &timeIdx,
     // prepare data x
     const LADY_SPACE_COORD &x0 = tracer->getX(timeIdx);
     TracerSkeleton &s = tracer->getSkeleton();
-    if (dynamic_cast<const geomtk::SphereDomain*>(data.domain) != NULL) {
+    if (LADY_IS_SPHERE_DOMAIN) {
         for (int i = 0; i < data.x.size(); ++i) {
             data.domain->project(geomtk::SphereDomain::STEREOGRAPHIC, x0,
-                                 *s.getXs(timeIdx)[i], data.x[i]);
+                                 *s.getSpaceCoords(timeIdx)[i], data.x[i]);
         }
     } else {
         REPORT_ERROR("Under construction!");
@@ -98,7 +98,7 @@ double DeformMatrixFitting::objective(unsigned int n,  const double *x,
     Data *data = static_cast<Data*>(data_);
     mat H(x, data->domain->getNumDim(), data->domain->getNumDim());
     double f = 0.0;
-    if (dynamic_cast<const geomtk::SphereDomain*>(data->domain) != NULL) {
+    if (LADY_IS_SPHERE_DOMAIN) {
         if (data->domain->getNumDim() == 2) {
             // calculate objective value
             for (int i = 0; i < data->x.size(); ++i) {

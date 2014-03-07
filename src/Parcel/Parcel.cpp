@@ -55,28 +55,28 @@ LADY_MATRIX& Parcel::getInvH(const TimeLevelIndex<2> &timeIdx) {
 void Parcel::getSpaceCoord(const LADY_DOMAIN &domain,
                            const TimeLevelIndex<2> &timeIdx,
                            const LADY_BODY_COORD &y, LADY_SPACE_COORD &x) {
-    if (dynamic_cast<const geomtk::SphereDomain*>(&domain) != NULL) {
+    if (LADY_IS_SPHERE_DOMAIN) {
         // In sphere domain, we calculate deformation matrix stuffs on local
         // stereographic projection of tracer centroid.
-        vec xs(domain.getNumDim());
-        xs = (*H.getLevel(timeIdx))*y();
+        x() = (*H.getLevel(timeIdx))*y();
         domain.projectBack(geomtk::SphereDomain::STEREOGRAPHIC,
-                           *q.getLevel(timeIdx), x, xs);
+                           *q.getLevel(timeIdx), x, x());
     } else {
         REPORT_ERROR("Under construction!");
+        x() = (*q.getLevel(timeIdx))()+(*H.getLevel(timeIdx))*y();
     }
 }
 
 void Parcel::getBodyCoord(const LADY_DOMAIN &domain,
                           const TimeLevelIndex<2> &timeIdx,
                           const LADY_SPACE_COORD &x, LADY_BODY_COORD &y) {
-    if (dynamic_cast<const geomtk::SphereDomain*>(&domain) != NULL) {
-        vec xs(domain.getNumDim());
+    if (LADY_IS_SPHERE_DOMAIN) {
         domain.project(geomtk::SphereDomain::STEREOGRAPHIC,
-                       *q.getLevel(timeIdx), x, xs);
-        y() = (*invH.getLevel(timeIdx))*xs;
+                       *q.getLevel(timeIdx), x, y());
+        y() = (*invH.getLevel(timeIdx))*y();
     } else {
         REPORT_ERROR("Under construction!");
+        y() = (*invH.getLevel(timeIdx))*(x()-(*q.getLevel(timeIdx))());
     }
 }
     

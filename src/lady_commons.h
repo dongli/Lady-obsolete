@@ -47,6 +47,7 @@ using geomtk::SystemTools;
 #define LADY_LIST list
 
 #define LADY_DOMAIN geomtk::SphereDomain
+#define LADY_IS_SPHERE_DOMAIN true
 #define LADY_MESH geomtk::RLLMesh
 #define LADY_MESH_INDEX geomtk::RLLMeshIndex
 #define LADY_FIELD geomtk::RLLField
