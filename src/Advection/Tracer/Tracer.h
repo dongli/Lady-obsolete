@@ -8,7 +8,6 @@ namespace lady {
 
 class TracerSkeleton;
 class TracerMeshCell;
-class DeformMatrixFitting;
 
 /**
  *  This class describes the tracer that is used to be advected by external wind
@@ -25,12 +24,6 @@ protected:
     int numConnectedCell;
     vector<TracerMeshCell*> connectedCells;
     double totalRemapWeight;
-
-    /**
-     *  Fitting parameters
-     */
-    friend class DeformMatrixFitting;
-    DeformMatrixFitting *deformMatrixFitting;
 public:
     Tracer(int numDim);
     virtual ~Tracer();
@@ -95,8 +88,8 @@ public:
      *  @param timeIdx the time level index.
      */
     void updateDeformMatrix(const LADY_DOMAIN &domain,
-                            const TimeLevelIndex<2> &timeIdx,
-                            bool isFirstTime = false);
+                            const LADY_MESH &mesh,
+                            const TimeLevelIndex<2> &timeIdx);
     
     /**
      *  Check the linear deformation transformation validity.

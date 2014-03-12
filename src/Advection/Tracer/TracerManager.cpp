@@ -17,33 +17,37 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
     this->domain = &domain;
     int numTracer = 0;
     // calculate the total number of tracers
-    if (LADY_IS_SPHERE_DOMAIN) {
-        // Note: Use reduced lat-lon mesh as the initial distribution of
-        //       tracers.
-        if (numTracerX%2 != 0) {
-            REPORT_ERROR("Tracer number (now is " << numTracerX <<
-                         ") along longitude axis should be even!");
-        }
-        double dlat = domain.getAxisSpan(1)/numTracerY;
-        double shiftLat = 45.0*RAD;
-        double minNumTracerX = 4;
-        double cosLat0, cosLat1 = cos(shiftLat);
-        for (int j = 0; j < numTracerY; ++j) {
-            double lat = domain.getAxisStart(1)+dlat*0.5+dlat*j;
-            int numTracerX_;
-            if (fabs(lat) < shiftLat) {
-                numTracerX_ = numTracerX;
-            } else {
-                if (j == 0) cosLat0 = fabs(cos(lat));
-                double ratio = (fabs(cos(lat))-cosLat0)/(cosLat1-cosLat0);
-                numTracerX_ = ratio*numTracerX+(1-ratio)*minNumTracerX;
-                if (numTracerX_%2 != 0) numTracerX_++;
-            }
-            numTracer += numTracerX_;
-        }
-    } else {
-        REPORT_ERROR("Under construction!");
+//#define USE_FULL_LAT_LON
+#ifdef LADY_USE_SPHERE_DOMAIN
+#ifdef USE_FULL_LAT_LON
+    numTracer = numTracerX*numTracerY;
+#else
+    // Note: Use reduced lat-lon mesh as the initial distribution of tracers.
+    if (numTracerX%2 != 0) {
+        REPORT_ERROR("Tracer number (now is " << numTracerX <<
+                     ") along longitude axis should be even!");
     }
+    double dlat = domain.getAxisSpan(1)/numTracerY;
+    double shiftLat = 45.0*RAD;
+    double minNumTracerX = 4;
+    double cosLat0, cosLat1 = cos(shiftLat);
+    for (int j = 0; j < numTracerY; ++j) {
+        double lat = domain.getAxisStart(1)+dlat*0.5+dlat*j;
+        int numTracerX_;
+        if (fabs(lat) < shiftLat) {
+            numTracerX_ = numTracerX;
+        } else {
+            if (j == 0) cosLat0 = fabs(cos(lat));
+            double ratio = (fabs(cos(lat))-cosLat0)/(cosLat1-cosLat0);
+            numTracerX_ = ratio*numTracerX+(1-ratio)*minNumTracerX;
+            if (numTracerX_%2 != 0) numTracerX_++;
+        }
+        numTracer += numTracerX_;
+    }
+#endif
+#else
+    REPORT_ERROR("Under construction!");
+#endif
     tracers.resize(numTracer);
     int ID = 0;
     LADY_LIST<Tracer*>::iterator tracer = tracers.begin();
@@ -56,44 +60,62 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
         // set coordinate
         LADY_SPACE_COORD &x0 = (*tracer)->getX(initTimeIdx);
         vec h(domain.getNumDim());
-        if (LADY_IS_SPHERE_DOMAIN) {
-            // Note: Use reduced lat-lon mesh as the initial distribution of
-            //       tracers.
-            double dlat = domain.getAxisSpan(1)/numTracerY;
-            double shiftLat = 45.0*RAD;
-            double minNumTracerX = 4;
-            double cosLat0, cosLat1 = cos(shiftLat);
-            double dlon;
-            int l = 0;
-            for (int j = 0; j < numTracerY; ++j) {
-                double lat = domain.getAxisStart(1)+dlat*0.5+dlat*j;
-                int numTracerX_;
-                if (fabs(lat) < shiftLat) {
-                    numTracerX_ = numTracerX;
-                } else {
-                    if (j == 0) cosLat0 = fabs(cos(lat));
-                    double ratio = (fabs(cos(lat))-cosLat0)/(cosLat1-cosLat0);
-                    numTracerX_ = ratio*numTracerX+(1-ratio)*minNumTracerX;
-                    if (numTracerX_%2 != 0) numTracerX_++;
+#ifdef LADY_USE_SPHERE_DOMAIN
+#ifdef USE_FULL_LAT_LON
+        double dlon = domain.getAxisSpan(0)/numTracerX;
+        double dlat = domain.getAxisSpan(1)/numTracerY;
+        int l = 0;
+        for (int j = 0; j < numTracerY; ++j) {
+            for (int i = 0; i < numTracerX; ++i) {
+                if (l == (*tracer)->getID()) {
+                    double lat = domain.getAxisStart(1)+dlat*0.5+dlat*j;
+                    double lon = domain.getAxisStart(0)+dlon*0.5+dlon*i;
+                    x0.setCoord(lon, lat);
+                    l = -1;
+                    break;
                 }
-                for (int i = 0; i < numTracerX_; ++i) {
-                    if (l == (*tracer)->getID()) {
-                        dlon = domain.getAxisSpan(0)/numTracerX_;
-                        double lon = domain.getAxisStart(0)+dlon*0.5+dlon*i;
-                        x0.setCoord(lon, lat);
-                        l = -1;
-                        break;
-                    }
-                    l++;
-                }
-                if (l == -1) break;
+                l++;
             }
-            x0.transformToCart(domain);
-            h(0) = 2.0*dlon*domain.getRadius()*cos(x0(1));
-            h(1) = 2.0*dlat*domain.getRadius();
-        } else {
-            REPORT_ERROR("Under construction!");
+            if (l == -1) break;
         }
+#else
+        // Note: Use reduced lat-lon mesh as the initial distribution of tracers.
+        double dlat = domain.getAxisSpan(1)/numTracerY;
+        double shiftLat = 45.0*RAD;
+        double minNumTracerX = 4;
+        double cosLat0, cosLat1 = cos(shiftLat);
+        double dlon;
+        int l = 0;
+        for (int j = 0; j < numTracerY; ++j) {
+            double lat = domain.getAxisStart(1)+dlat*0.5+dlat*j;
+            int numTracerX_;
+            if (fabs(lat) < shiftLat) {
+                numTracerX_ = numTracerX;
+            } else {
+                if (j == 0) cosLat0 = fabs(cos(lat));
+                double ratio = (fabs(cos(lat))-cosLat0)/(cosLat1-cosLat0);
+                numTracerX_ = ratio*numTracerX+(1-ratio)*minNumTracerX;
+                if (numTracerX_%2 != 0) numTracerX_++;
+            }
+            for (int i = 0; i < numTracerX_; ++i) {
+                if (l == (*tracer)->getID()) {
+                    dlon = domain.getAxisSpan(0)/numTracerX_;
+                    double lon = domain.getAxisStart(0)+dlon*0.5+dlon*i;
+                    x0.setCoord(lon, lat);
+                    l = -1;
+                    break;
+                }
+                l++;
+            }
+            if (l == -1) break;
+        }
+#endif
+        x0.transformToCart(domain);
+        h(0) = 2.0*dlon*domain.getRadius()*x0.getCosLat();;
+        h(1) = 2.0*dlat*domain.getRadius();
+#else
+        REPORT_ERROR("Under construction!");
+#endif
         // set mesh index
         LADY_MESH_INDEX &idx0 = (*tracer)->getMeshIndex(initTimeIdx);
         idx0.locate(mesh, x0);
@@ -106,7 +128,7 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
         (*tracer)->getSkeleton().init(domain, mesh, h.max());
         // set deformation matrix
         (*tracer)->getH(initTimeIdx).eye();
-        (*tracer)->updateDeformMatrix(domain, initTimeIdx, true);
+        (*tracer)->updateDeformMatrix(domain, mesh, initTimeIdx);
     }
     // -------------------------------------------------------------------------
     REPORT_NOTICE(numTracer << " tracers are initialized.");
@@ -148,7 +170,7 @@ void TracerManager::output(const string &fileName,
     int mDimIds[2], mVarId;
     int sDimIds[3], s1VarId, s2VarId;
     char str[100];
-    int l, numSkel2 = 4;
+    int l, numSkel2 = 40;
     double *data;
     LADY_LIST<Tracer*>::iterator tracer;
 

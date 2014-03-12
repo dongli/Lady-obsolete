@@ -30,6 +30,7 @@ void AdvectionManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
     if (tracerMeshCells == NULL) {
         tracerMeshCells = new LADY_FIELD<TracerMeshCell>(mesh);
         tracerMeshCells->create(ScalarField, domain.getNumDim(), A_GRID);
+        cellCoords.reshape(3, mesh.getTotalNumGrid(A_GRID));
         for (int i = 0; i < mesh.getTotalNumGrid(A_GRID); ++i) {
             LADY_SPACE_COORD x(domain.getNumDim());
             mesh.getGridCoord(i, x, A_GRID);
@@ -325,7 +326,7 @@ void AdvectionManager::integrate_RK4(double dt,
                     x1s[i]->transformToCart(domain);
                 }
                 // -------------------------------------------------------------
-                (*tracer)->updateDeformMatrix(domain, newTimeIdx);
+                (*tracer)->updateDeformMatrix(domain, mesh, newTimeIdx);
 //                (*tracer)->selfInspect(domain, newTimeIdx);
             }
         }
@@ -347,19 +348,24 @@ void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
     // -------------------------------------------------------------------------
     // call mlpack::range::RangeSearch to find out the neighbor cells of tracers
     // and set the data structures for both cells and tracers for remapping
+    clock_t time1 = 0, time2 = 0;
     tracer = tracerManager.tracers.begin();
     for (; tracer != tracerManager.tracers.end(); ++tracer) {
         // =====================================================================
         // search neighbor cells for the tracer
         LADY_SPACE_COORD &x = (*tracer)->getX(timeIdx);
+        clock_t clock1 = clock();
         Searcher a(cellTree, NULL, cellCoords, x.getCartCoord(), true);
         double longAxisSize = (*tracer)->getShapeSize(timeIdx)(0);
         mlpack::math::Range r(0.0, longAxisSize);
         vector<vector<size_t> > neighbors;
         vector<vector<double> > distances;
         a.Search(r, neighbors, distances);
+        clock_t clock2 = clock();
+        time1 += clock2-clock1;
         // =====================================================================
         // set data structures for the tracer and its neighbor cells
+        clock1 = clock();
         LADY_BODY_COORD y(domain.getNumDim());
         for (int i = 0; i < neighbors[0].size(); ++i) {
             int cellIdx = cellCoordsMap[neighbors[0][i]];
@@ -374,6 +380,8 @@ void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
                 (*tracer)->connect(cell, weight);
             }
         }
+        clock2 = clock();
+        time2 = clock2-clock1;
         assert((*tracer)->getConnectedCells().size() != 0);
 #define CHECK_NEIGHBORS 0
 #if CHECK_NEIGHBORS == 1
@@ -420,6 +428,8 @@ void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
         CHECK_POINT
 #endif
     }
+    REPORT_NOTICE("Range search uses " << setw(6) << setprecision(2) << (double)(time1)/CLOCKS_PER_SEC << " seconds.");
+    REPORT_NOTICE("Shape function uses " << setw(6) << setprecision(2) << (double)(time2)/CLOCKS_PER_SEC << " seconds.");
 }
 
 void AdvectionManager::remapMeshToTracers(const TimeLevelIndex<2> &timeIdx) {

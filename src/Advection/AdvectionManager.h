@@ -7,10 +7,15 @@
 namespace lady {
 
 // shortcuts for MLPACK classes
+#ifdef TEST
+
+#else
 typedef mlpack::tree::BinarySpaceTree<
     mlpack::bound::HRectBound<2>,
     mlpack::range::RangeSearchStat> Tree;
-typedef mlpack::range::RangeSearch<> Searcher;
+typedef mlpack::metric::SquaredEuclideanDistance Metric;
+#endif
+typedef mlpack::range::RangeSearch<Metric, Tree> Searcher;
 
 /**
  *  This class specifies the manager of linear advection.

@@ -47,14 +47,14 @@ void DeformMatrixFitting::fit(const TimeLevelIndex<2> &timeIdx,
     // prepare data x
     const LADY_SPACE_COORD &x0 = tracer->getX(timeIdx);
     TracerSkeleton &s = tracer->getSkeleton();
-    if (LADY_IS_SPHERE_DOMAIN) {
-        for (int i = 0; i < data.x.size(); ++i) {
-            data.domain->project(geomtk::SphereDomain::STEREOGRAPHIC, x0,
-                                 *s.getSpaceCoords(timeIdx)[i], data.x[i]);
-        }
-    } else {
-        REPORT_ERROR("Under construction!");
+#ifdef LADY_USE_SPHERE_DOMAIN
+    for (int i = 0; i < data.x.size(); ++i) {
+        data.domain->project(geomtk::SphereDomain::STEREOGRAPHIC, x0,
+                             *s.getSpaceCoords(timeIdx)[i], data.x[i]);
     }
+#else
+    REPORT_ERROR("Under construction!");
+#endif
 //    if (tracer->getID() == 10000) {
 //        data.debug = true;
 //        tracer->getH(timeIdx-1).print();
@@ -98,31 +98,33 @@ double DeformMatrixFitting::objective(unsigned int n,  const double *x,
     Data *data = static_cast<Data*>(data_);
     mat H(x, data->domain->getNumDim(), data->domain->getNumDim());
     double f = 0.0;
-    if (LADY_IS_SPHERE_DOMAIN) {
-        if (data->domain->getNumDim() == 2) {
-            // calculate objective value
-            for (int i = 0; i < data->x.size(); ++i) {
-                    f += pow(norm(data->x[i]-H*data->y[i], 2), 2);
-            }
-            // calculate gradient
-            if (grad != NULL) {
-                int k = 0;
-                for (int j = 0; j < data->domain->getNumDim(); ++j) {
-                    for (int i = 0; i < data->domain->getNumDim(); ++i) {
-                        double s0 = 0.0, s1 = 0.0, s2 = 0.0;
-                        for (int l = 0; l < data->y.size(); ++l) {
-                            s0 += data->y[l](j)*data->y[l](0);
-                            s1 += data->y[l](j)*data->y[l](1);
-                            s2 += data->y[l](j)*data->x[l](i);
-                        }
-                        grad[k++] = 2*(s0*H(i, 0)+s1*H(i, 1)-s2);
+#ifdef LADY_USE_SPHERE_DOMAIN
+    if (data->domain->getNumDim() == 2) {
+        // calculate objective value
+        for (int i = 0; i < data->x.size(); ++i) {
+                f += pow(norm(data->x[i]-H*data->y[i], 2), 2);
+        }
+        // calculate gradient
+        if (grad != NULL) {
+            int k = 0;
+            for (int j = 0; j < data->domain->getNumDim(); ++j) {
+                for (int i = 0; i < data->domain->getNumDim(); ++i) {
+                    double s0 = 0.0, s1 = 0.0, s2 = 0.0;
+                    for (int l = 0; l < data->y.size(); ++l) {
+                        s0 += data->y[l](j)*data->y[l](0);
+                        s1 += data->y[l](j)*data->y[l](1);
+                        s2 += data->y[l](j)*data->x[l](i);
                     }
+                    grad[k++] = 2*(s0*H(i, 0)+s1*H(i, 1)-s2);
                 }
             }
-        } else if (data->domain->getNumDim() == 3) {
-            REPORT_ERROR("Under construction!");
         }
+    } else if (data->domain->getNumDim() == 3) {
+        REPORT_ERROR("Under construction!");
     }
+#else
+    REPORT_ERROR("Under construction!");
+#endif
 //    if (data->debug) {
 //        cout << "[Notice]: Iteration " << ++data->count;
 //        cout << ": Objective function value is " << f << endl;
