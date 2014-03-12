@@ -42,9 +42,7 @@ DeformationTestCase::DeformationTestCase(SubCase subCase, InitCond initCond) {
     mesh->setCellVolumes();
     // -------------------------------------------------------------------------
     // initialize velocity and its gradient tensor
-    V = new LADY_VELOCITY_FIELD("v", "m s-1", "advection velocity",
-                                *mesh, HAS_HALF_LEVEL);
-    V->create(_2D, C_GRID);
+    V.create("v", "m s-1", "advection velocity", *mesh, _2D, C_GRID, HAS_HALF_LEVEL);
     // -------------------------------------------------------------------------
     REPORT_ONLINE;
 }
@@ -80,15 +78,14 @@ void DeformationTestCase::advance(double time,
             for (int i = 0; i < mesh->getNumGrid(0, EDGE); ++i) {
                 double lon = mesh->getGridCoordComp(0, EDGE, i);
                 double lat = mesh->getGridCoordComp(1, CENTER, j);
-                (*V)(0, timeIdx, i, j) =
-                    k*pow(sin(lon*0.5), 2.0)*sin(lat*2.0)*cosT;
+                V(0, timeIdx, i, j) = k*pow(sin(lon*0.5), 2.0)*sin(lat*2.0)*cosT;
             }
         }
         for (int j = 0; j < mesh->getNumGrid(1, EDGE); ++j) {
             for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
                 double lon = mesh->getGridCoordComp(0, CENTER, i);
                 double lat = mesh->getGridCoordComp(1, EDGE, j);
-                (*V)(1, timeIdx, i, j) = k*0.5*sin(lon)*cos(lat)*cosT;
+                V(1, timeIdx, i, j) = k*0.5*sin(lon)*cos(lat)*cosT;
             }
         }
     } else if (subCase == CASE2) {
@@ -97,15 +94,14 @@ void DeformationTestCase::advance(double time,
             for (int i = 0; i < mesh->getNumGrid(0, EDGE); ++i) {
                 double lon = mesh->getGridCoordComp(0, EDGE, i);
                 double lat = mesh->getGridCoordComp(1, CENTER, j);
-                (*V)(0, timeIdx, i, j) =
-                    k*pow(sin(lon), 2.0)*sin(lat*2.0)*cosT;
+                V(0, timeIdx, i, j) = k*pow(sin(lon), 2.0)*sin(lat*2.0)*cosT;
             }
         }
         for (int j = 0; j < mesh->getNumGrid(1, EDGE); ++j) {
             for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
                 double lon = mesh->getGridCoordComp(0, CENTER, i);
                 double lat = mesh->getGridCoordComp(1, EDGE, j);
-                (*V)(1, timeIdx, i, j) = k*sin(lon*2.0)*cos(lat)*cosT;
+                V(1, timeIdx, i, j) = k*sin(lon*2.0)*cos(lat)*cosT;
             }
         }
     } else if (subCase == CASE3) {
@@ -114,16 +110,15 @@ void DeformationTestCase::advance(double time,
             for (int i = 0; i < mesh->getNumGrid(0, EDGE); ++i) {
                 double lon = mesh->getGridCoordComp(0, EDGE, i);
                 double lat = mesh->getGridCoordComp(1, CENTER, j);
-                (*V)(0, timeIdx, i, j) =
-                    -k*pow(sin(lon), 2.0)*sin(lat*2.0)*pow(cos(lat), 2.0)*cosT;
+                V(0, timeIdx, i, j) = -k*pow(sin(lon), 2.0)*sin(lat*2.0)*
+                                        pow(cos(lat), 2.0)*cosT;
             }
         }
         for (int j = 0; j < mesh->getNumGrid(1, EDGE); ++j) {
             for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
                 double lon = mesh->getGridCoordComp(0, CENTER, i);
                 double lat = mesh->getGridCoordComp(1, EDGE, j);
-                (*V)(1, timeIdx, i, j) =
-                    k*0.5*sin(lon)*pow(cos(lat), 3.0)*cosT;
+                V(1, timeIdx, i, j) = k*0.5*sin(lon)*pow(cos(lat), 3.0)*cosT;
             }
         }
     } else if (subCase == CASE4) {
@@ -134,15 +129,14 @@ void DeformationTestCase::advance(double time,
             for (int i = 0; i < mesh->getNumGrid(0, EDGE); ++i) {
                 double lon = mesh->getGridCoordComp(0, EDGE, i)-c1;
                 double lat = mesh->getGridCoordComp(1, CENTER, j);
-                (*V)(0, timeIdx, i, j) =
-                    k*pow(sin(lon), 2.0)*sin(lat*2.0)*cosT+c2*cos(lat);
+                V(0, timeIdx, i, j) = k*pow(sin(lon), 2.0)*sin(lat*2.0)*cosT+c2*cos(lat);
             }
         }
         for (int j = 0; j < mesh->getNumGrid(1, EDGE); ++j) {
             for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
                 double lon = mesh->getGridCoordComp(0, CENTER, i)-c1;
                 double lat = mesh->getGridCoordComp(1, EDGE, j);
-                (*V)(1, timeIdx, i, j) = k*sin(lon*2.0)*cos(lat)*cosT;
+                V(1, timeIdx, i, j) = k*sin(lon*2.0)*cos(lat)*cosT;
             }
         }
         // TEST: calculate velocity gradient tensor analytically
@@ -169,14 +163,14 @@ void DeformationTestCase::advance(double time,
 #endif
     }
     if (timeIdx.isCurrentIndex()) {
-        V->applyBndCond(timeIdx);
+        V.applyBndCond(timeIdx);
     } else {
-        V->applyBndCond(timeIdx, UPDATE_HALF_LEVEL);
+        V.applyBndCond(timeIdx, UPDATE_HALF_LEVEL);
     }
 }
 
 void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
-    LADY_SCALAR_FIELD *q;
+    LADY_SCALAR_FIELD *q0, *q1;
     TimeLevelIndex<2> timeIdx;
     LADY_SPACE_COORD c0(2), c1(2);
     c0.setCoord(M_PI*5.0/6.0, 0.0);
@@ -185,16 +179,14 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
         
     } else if (initCond == SLOTTED_CYLINDERS) {
         // reference tracer
-        q = new LADY_SCALAR_FIELD(*mesh);
-        q->create(ScalarField, 2, A_GRID);
-        this->q.push_back(q);
+        q.push_back(new LADY_SCALAR_FIELD); q0 = q.back();
+        q0->create("", "", "", *mesh, ScalarField, 2, A_GRID);
         for (int i = 0; i < mesh->getTotalNumGrid(A_GRID); ++i) {
-            (*q)(timeIdx, i) = 1.0;
+            (*q0)(timeIdx, i) = 1.0;
         }
         // test tracer
-        q = new LADY_SCALAR_FIELD(*mesh);
-        q->create(ScalarField, 2, A_GRID);
-        this->q.push_back(q);
+        q.push_back(new LADY_SCALAR_FIELD); q1 = q.back();
+        q1->create("", "", "", *mesh, ScalarField, 2, A_GRID);
         double b = 0.1, c = 1.0, r = 0.5;
         for (int i = 0; i < mesh->getTotalNumGrid(A_GRID); ++i) {
             LADY_SPACE_COORD x(2);
@@ -203,18 +195,18 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
             double r1 = domain->calcDistance(x, c1);
             if ((r0 <= r && fabs(x(0)-c0(0)) >= r/6.0) ||
                 (r1 <= r && fabs(x(0)-c1(0)) >= r/6.0))
-                (*q)(timeIdx, i) = c;
+                (*q1)(timeIdx, i) = c;
             else if (r0 <= r && fabs(x(0)-c0(0)) < r/6.0 &&
                      x(1)-c0(1) < -5.0/12.0*r)
-                (*q)(timeIdx, i) = c;
+                (*q1)(timeIdx, i) = c;
             else if (r1 <= r && fabs(x(0)-c1(0)) < r/6.0 &&
                      x(1)-c1(1) > 5.0/12.0*r)
-                (*q)(timeIdx, i) = c;
+                (*q1)(timeIdx, i) = c;
             else
-                (*q)(timeIdx, i) = b;
+                (*q1)(timeIdx, i) = b;
         }
     } else if (initCond == GAUSSIAN_HILL) {
-        
+        REPORT_ERROR("Under construction!");
     }
     AdvectionTestCase::calcInitCond(advectionManager);
 }

@@ -23,7 +23,7 @@ typedef mlpack::range::RangeSearch<Metric, Tree> Searcher;
 class AdvectionManager {
 protected:
     TracerManager tracerManager;
-    LADY_FIELD<TracerMeshCell> *tracerMeshCells;
+    LADY_FIELD<TracerMeshCell> tracerMeshCells;
     LADY_REGRID *regrid; //>! used to interpolate velocity onto tracers
 private:
     // range search parameters
@@ -48,7 +48,7 @@ public:
               int numParcelX, int numParcelY);
 
     const LADY_FIELD<TracerMeshCell>& getTracerMeshCells() const {
-        return *tracerMeshCells;
+        return tracerMeshCells;
     }
 
     /**

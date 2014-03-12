@@ -41,9 +41,7 @@ SolidRotationTestCase::SolidRotationTestCase() {
     mesh->setCellVolumes();
     // -------------------------------------------------------------------------
     // initialize velocity and its gradient tensor
-    V = new LADY_VELOCITY_FIELD("v", "m s-1", "advection velocity",
-                                *mesh, HAS_HALF_LEVEL);
-    V->create(_2D, C_GRID);
+    V.create("v", "m s-1", "advection velocity", *mesh, _2D, C_GRID, HAS_HALF_LEVEL);
     // -------------------------------------------------------------------------
     // set parameters
     // =========================================================================
@@ -94,14 +92,13 @@ void SolidRotationTestCase::advance(double time,
         double sinLat = mesh->getSinLat(CENTER, j);
         for (int i = 0; i < mesh->getNumGrid(0, EDGE); ++i) {
             double cosLon = mesh->getCosLon(EDGE, i);
-            (*V)(0, timeIdx, i, j) = U0*(cosLat*cosAlpha+
-                                           sinLat*cosLon*sinAlpha);
+            V(0, timeIdx, i, j) = U0*(cosLat*cosAlpha+sinLat*cosLon*sinAlpha);
         }
     }
     for (int j = 0; j < mesh->getNumGrid(1, EDGE); ++j) {
         for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
             double sinLon = mesh->getSinLon(CENTER, i);
-            (*V)(1, timeIdx, i, j) = -U0*sinLon*sinAlpha;
+            V(1, timeIdx, i, j) = -U0*sinLon*sinAlpha;
         }
     }
     // TEST: calculate velocity gradient tensor analytically
@@ -130,25 +127,24 @@ void SolidRotationTestCase::advance(double time,
     }
 #endif
     if (timeIdx.isCurrentIndex()) {
-        V->applyBndCond(timeIdx);
+        V.applyBndCond(timeIdx);
     } else {
-        V->applyBndCond(timeIdx, UPDATE_HALF_LEVEL);
+        V.applyBndCond(timeIdx, UPDATE_HALF_LEVEL);
     }
 }
 
 void SolidRotationTestCase::calcInitCond(AdvectionManager &advectionManager) {
-    q0 = new LADY_SCALAR_FIELD(*mesh);
-    q0->create(ScalarField, 2, A_GRID);
-    this->q.push_back(q0);
+    q.push_back(new LADY_SCALAR_FIELD);
+    q.front()->create("", "", "", *mesh, ScalarField, 2, A_GRID);
     TimeLevelIndex<2> initTimeIdx;
-    calcSolution(0, initTimeIdx, *q0);
+    calcSolution(0, initTimeIdx, *q.front());
     AdvectionTestCase::calcInitCond(advectionManager);
 }
 
 void SolidRotationTestCase::calcSolution(double time,
                                          const TimeLevelIndex<2> &timeIdx,
                                          AdvectionManager &advectionManager) {
-    calcSolution(time, timeIdx, *q0);
+    calcSolution(time, timeIdx, *q.front());
     advectionManager.input(timeIdx, q);
     REPORT_NOTICE("Overwrite tracers with the true solution.");
 }

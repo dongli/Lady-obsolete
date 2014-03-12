@@ -20,7 +20,7 @@ const LADY_MESH& AdvectionTestCase::getMesh() const {
 }
 
 const LADY_VELOCITY_FIELD& AdvectionTestCase::getVelocityField() const {
-    return *V;
+    return V;
 }
 
 void AdvectionTestCase::outputVelocity(const string &fileName,
@@ -162,7 +162,7 @@ void AdvectionTestCase::outputVelocity(const string &fileName,
             mat u, v;
             u.reshape(mesh->getNumGrid(0, CENTER), mesh->getNumGrid(1, CENTER), 1);
             v.reshape(mesh->getNumGrid(0, CENTER), mesh->getNumGrid(1, CENTER), 1);
-            V->convert(A_GRID, oldTimeIdx, u, v);
+            V.convert(A_GRID, oldTimeIdx, u, v);
             if (nc_put_var(ncId, uVarId, u.memptr()) != NC_NOERR) {
                 REPORT_ERROR("Failed to put variable u!");
             }
@@ -177,7 +177,7 @@ void AdvectionTestCase::outputVelocity(const string &fileName,
                       mesh->getNumGrid(2, CENTER));
             w.reshape(mesh->getNumGrid(0, CENTER), mesh->getNumGrid(1, CENTER),
                       mesh->getNumGrid(2, CENTER));
-            V->convert(A_GRID, oldTimeIdx, u, v, w);
+            V.convert(A_GRID, oldTimeIdx, u, v, w);
             if (nc_put_var(ncId, uVarId, u.memptr()) != NC_NOERR) {
                 REPORT_ERROR("Failed to put variable u!");
             }

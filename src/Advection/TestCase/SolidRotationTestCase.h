@@ -10,7 +10,6 @@ protected:
     double angleSpeed, U0, alpha;
     LADY_SPACE_COORD *axisPole, *c0, *cr0;
     double R, H0;
-    LADY_SCALAR_FIELD *q0;
 public:
     SolidRotationTestCase();
     virtual ~SolidRotationTestCase();
