@@ -13,8 +13,7 @@ cmake_minimum_required (VERSION 2.8)
 project (lady CXX)
 
 add_definitions (-DDEBUG)
-set (CMAKE_CXX_COMPILER "/usr/local/bin/g++-4.9")
-set (CMAKE_CXX_FLAGS "-std=c++11")
+set (CMAKE_CXX_FLAGS "-std=c++11 -Wno-c++11-extensions")
 
 option (USE_SYSTEM_MLPACK "Use system library MLPACK" ON)
 option (USE_SYSTEM_NLOPT "Use system library NLopt" ON)

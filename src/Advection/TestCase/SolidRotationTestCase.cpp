@@ -13,7 +13,7 @@ SolidRotationTestCase::SolidRotationTestCase() {
     // Note: Use larger Pole radius to decrease deformation when crossing Poles.
     mesh->setPoleRadius(30.0*RAD);
     int numLon = 360;
-    double fullLon[numLon], halfLon[numLon];
+    vec fullLon(numLon), halfLon(numLon);
     double dlon = 2.0*M_PI/numLon;
     for (int i = 0; i < numLon; ++i) {
         fullLon[i] = i*dlon;
@@ -21,7 +21,7 @@ SolidRotationTestCase::SolidRotationTestCase() {
     }
     mesh->setGridCoords(0, numLon, fullLon, halfLon);
     int numLat = 181;
-    double fullLat[numLat], halfLat[numLat-1];
+    vec fullLat(numLat), halfLat(numLat-1);
     // NOTE: Since the velocity interpolation within polar cap is inaccurate in
     //       deformational flow, we set the second and last second latitude very
     //       near to Poles by the parameter 'lat0' (distance from Poles).
