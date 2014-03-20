@@ -3,7 +3,6 @@
 
 #include "geomtk.h"
 #include "mlpack/methods/range_search/range_search.hpp"
-#include "nlopt.hpp"
 
 #include <iostream>
 #include <iomanip>
@@ -30,16 +29,14 @@ using geomtk::RAD;
 using geomtk::PI2;
 using geomtk::BILINEAR;
 using geomtk::Time;
-using geomtk::ScalarField;
-using geomtk::VectorField;
-using geomtk::A_GRID;
-using geomtk::C_GRID;
-using geomtk::CENTER;
-using geomtk::EDGE;
 using geomtk::TimeLevels;
 using geomtk::TimeLevelIndex;
 using geomtk::SystemTools;
-    
+
+const int FULL = geomtk::RLLStagger::GridType::FULL;
+const int HALF = geomtk::RLLStagger::GridType::HALF;
+const int CENTER = geomtk::RLLStagger::Location::CENTER;
+
 #define LADY_SPACE_COORD geomtk::SphereCoord
 #define LADY_BODY_COORD geomtk::BodyCoord
 #define LADY_VELOCITY geomtk::SphereVelocity

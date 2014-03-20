@@ -10,7 +10,7 @@ class AdvectionTestCase {
 protected:
     LADY_DOMAIN *domain;
     LADY_MESH *mesh;
-    LADY_VELOCITY_FIELD V;
+    LADY_VELOCITY_FIELD velocity;
     vector<LADY_SCALAR_FIELD*> q;
 public:
     AdvectionTestCase();

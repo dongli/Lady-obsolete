@@ -13,7 +13,7 @@ cmake_minimum_required (VERSION 2.8)
 project (lady CXX)
 
 add_definitions (-DDEBUG)
-set (CMAKE_CXX_FLAGS "-std=c++11 -Wno-c++11-extensions")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wno-c++11-extensions")
 
 option (USE_SYSTEM_MLPACK "Use system library MLPACK" ON)
 option (USE_SYSTEM_NLOPT "Use system library NLopt" ON)
@@ -46,67 +46,12 @@ else ()
     endif ()
 endif ()
 
-# NLopt
-set (nlopt_internal_root "${PROJECT_SOURCE_DIR}/external/nlopt-2.4.1")
-if (EXISTS "${nlopt_internal_root}" AND NOT ${USE_SYSTEM_NLOPT})
-    # use internal NLopt
-    message ("@@ Use internal library NLopt!")
-    add_subdirectory ("${nlopt_internal_root}")
-else ()
-    # use user provided NLopt
-    if (DEFINED ENV{NLOPT_ROOT})
-        message ("@@ Use user provided library NLopt.")
-        message ("@@ NLOPT_ROOT = $ENV{NLOPT_ROOT}")
-        set (NLOPT_INCLUDE_DIR "$ENV{NLOPT_ROOT}/include")
-        set (NLOPT_LIBRARY_DIR "$ENV{NLOPT_ROOT}/lib")
-    else ()
-        message (FATAL_ERROR
-            "CMake couldn't find library NLopt! "
-            "If it have been installed and you know where it is, "
-            "set NLOPT_ROOT (e.g. in .bashrc) to it."
-        )
-    endif ()
-endif ()
-
-# CGAL
-find_package (CGAL)
-if (NOT CGAL_FOUND)
-    if (DEFINED ENV{CGAL_ROOT})
-        message ("@@ Use user provided library CGAL!")
-        message ("@@ CGAL_ROOT = $ENV{CGAL_ROOT}")
-    else ()
-        message (FATAL_ERROR
-            "CMake couldn't find library CGAL! "
-            "If it have been installed and you know where it is, "
-            "set CGAL_ROOT (e.g. in .bashrc) to it."
-        )
-    endif ()
-endif ()
-include (${CGAL_USE_FILE})
-
-# Boost
-find_package (Boost REQUIRED)
-if (NOT Boost_FOUND)
-    if (DEFINED ENV{Boost_ROOT})
-        message ("@@ Use user provided library Boost!")
-        message ("@@ Boost_ROOT = $ENV{Boost_ROOT}")
-    else ()
-        message (FATAL_ERROR
-            "CMake couldn't find library Boost! "
-            "If it have been installed and you know where it is, "
-            "set Boost_ROOT (e.g. in .bashrc) to it."
-        )
-    endif ()
-endif ()
-
 # GeoMTK
 add_subdirectory ("${PROJECT_SOURCE_DIR}/external/geomtk")
 include_directories (
-    ${NLOPT_INCLUDE_DIR}
     ${GEOMTK_INCLUDE_DIRS}
 )
 link_directories (
-    ${NLOPT_LIBRARY_DIR}
     ${GEOMTK_LIBRARY_DIRS}
 )
 
@@ -137,7 +82,7 @@ endforeach ()
 # ------------------------------------------------------------------------------
 # library targets
 add_library (lady STATIC ${headers} ${sources})
-target_link_libraries (lady mlpack nlopt CGAL)
+target_link_libraries (lady mlpack)
 add_dependencies (lady geomtk)
 
 # ------------------------------------------------------------------------------

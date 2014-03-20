@@ -40,8 +40,8 @@ SolidRotationTestCase::SolidRotationTestCase() {
     mesh->setGridCoords(1, numLat, fullLat, halfLat);
     mesh->setCellVolumes();
     // -------------------------------------------------------------------------
-    // initialize velocity and its gradient tensor
-    V.create("v", "m s-1", "advection velocity", *mesh, _2D, C_GRID, HAS_HALF_LEVEL);
+    // initialize velocity
+    velocity.create(*mesh, true, HAS_HALF_LEVEL);
     // -------------------------------------------------------------------------
     // set parameters
     // =========================================================================
@@ -87,55 +87,30 @@ double SolidRotationTestCase::getStepSize() const {
 void SolidRotationTestCase::advance(double time,
                                     const TimeLevelIndex<2> &timeIdx) {
     double sinAlpha = sin(alpha), cosAlpha = cos(alpha);
-    for (int j = 0; j < mesh->getNumGrid(1, CENTER); ++j) {
-        double cosLat = mesh->getCosLat(CENTER, j);
-        double sinLat = mesh->getSinLat(CENTER, j);
-        for (int i = 0; i < mesh->getNumGrid(0, EDGE); ++i) {
-            double cosLon = mesh->getCosLon(EDGE, i);
-            V(0, timeIdx, i, j) = U0*(cosLat*cosAlpha+sinLat*cosLon*sinAlpha);
+    for (int j = 0; j < mesh->getNumGrid(1, FULL); ++j) {
+        double cosLat = mesh->getCosLat(FULL, j);
+        double sinLat = mesh->getSinLat(FULL, j);
+        for (int i = 0; i < mesh->getNumGrid(0, HALF); ++i) {
+            double cosLon = mesh->getCosLon(HALF, i);
+            velocity(0)(timeIdx, i, j) = U0*(cosLat*cosAlpha+sinLat*cosLon*sinAlpha);
         }
     }
-    for (int j = 0; j < mesh->getNumGrid(1, EDGE); ++j) {
-        for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
-            double sinLon = mesh->getSinLon(CENTER, i);
-            V(1, timeIdx, i, j) = -U0*sinLon*sinAlpha;
+    for (int j = 0; j < mesh->getNumGrid(1, HALF); ++j) {
+        for (int i = 0; i < mesh->getNumGrid(0, FULL); ++i) {
+            double sinLon = mesh->getSinLon(FULL, i);
+            velocity(1)(timeIdx, i, j) = -U0*sinLon*sinAlpha;
         }
     }
-    // TEST: calculate velocity gradient tensor analytically
-#define USE_ANALYTICAL_TENSOR 0
-#if USE_ANALYTICAL_TENSOR == 1
-    for (int j = 1; j < mesh->getNumGrid(1, CENTER)-1; ++j) {
-        double cosLat = mesh->getCosLat(CENTER, j);
-        double sinLat = mesh->getSinLat(CENTER, j);
-        double tanLat = mesh->getTanLat(CENTER, j);
-        double RcosLat = domain->getRadius()*cosLat;
-        for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
-            double cosLon = mesh->getCosLon(CENTER, i);
-            double sinLon = mesh->getSinLon(CENTER, i);
-            double u = U0*(cosLat*cosAlpha+sinLat*cosLon*sinAlpha);
-            double v = -U0*sinLon*sinAlpha;
-            double dudlon = -U0*sinLat*sinLon*sinAlpha/RcosLat;
-            double dudlat = U0*(-sinLat*cosAlpha+cosLat*cosLon*sinAlpha)/
-                                domain->getRadius();
-            double dvdlon = -U0*cosLon*sinAlpha/RcosLat;
-            double dvdlat = 0.0;
-            (*T)(timeLevel, 0, 0, i, j) = dudlon;
-            (*T)(timeLevel, 0, 1, i, j) = dudlat+u/domain->getRadius()*tanLat;
-            (*T)(timeLevel, 1, 0, i, j) = dvdlon;
-            (*T)(timeLevel, 1, 1, i, j) = dvdlat+v/domain->getRadius()*tanLat;
-        }
-    }
-#endif
     if (timeIdx.isCurrentIndex()) {
-        V.applyBndCond(timeIdx);
+        velocity.applyBndCond(timeIdx);
     } else {
-        V.applyBndCond(timeIdx, UPDATE_HALF_LEVEL);
+        velocity.applyBndCond(timeIdx, UPDATE_HALF_LEVEL);
     }
 }
 
 void SolidRotationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     q.push_back(new LADY_SCALAR_FIELD);
-    q.front()->create("", "", "", *mesh, ScalarField, 2, A_GRID);
+    q.front()->create("", "", "", *mesh, CENTER);
     TimeLevelIndex<2> initTimeIdx;
     calcSolution(0, initTimeIdx, *q.front());
     AdvectionTestCase::calcInitCond(advectionManager);
@@ -154,11 +129,11 @@ void SolidRotationTestCase::calcSolution(double time,
                                          LADY_SCALAR_FIELD &q) {
     cr0->setCoordComp(0, angleSpeed*time);
     domain->rotateBack(*axisPole, *c0, *cr0);
-    for (int j = 0; j < mesh->getNumGrid(1, CENTER); ++j) {
-        for (int i = 0; i < mesh->getNumGrid(0, CENTER); ++i) {
-            double lon = mesh->getGridCoordComp(0, CENTER, i);
-            double sinLat = mesh->getSinLat(CENTER, j);
-            double cosLat = mesh->getCosLat(CENTER, j);
+    for (int j = 0; j < mesh->getNumGrid(1, FULL); ++j) {
+        for (int i = 0; i < mesh->getNumGrid(0, FULL); ++i) {
+            double lon = mesh->getGridCoordComp(0, FULL, i);
+            double sinLat = mesh->getSinLat(FULL, j);
+            double cosLat = mesh->getCosLat(FULL, j);
             double d = domain->calcDistance(*c0, lon, sinLat, cosLat);
             if (d < R) {
                 q(timeIdx, i, j) = H0*(1+cos(M_PI*d/R))/2;

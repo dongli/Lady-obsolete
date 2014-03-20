@@ -24,21 +24,19 @@ void AdvectionManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
         regrid = new LADY_REGRID(mesh);
     }
     TimeLevelIndex<2> initTimeIdx;
-    tracerMeshCells.create("", "", "mesh cells for storing tracers",
-                            mesh, ScalarField, domain.getNumDim(), A_GRID);
-    cellCoords.reshape(3, mesh.getTotalNumGrid(A_GRID));
-    for (int i = 0; i < mesh.getTotalNumGrid(A_GRID); ++i) {
+    tracerMeshCells.create("", "", "mesh cells for storing tracers", mesh, CENTER);
+    cellCoords.reshape(3, mesh.getTotalNumGrid(CENTER));
+    for (int i = 0; i < mesh.getTotalNumGrid(CENTER); ++i) {
         LADY_SPACE_COORD x(domain.getNumDim());
-        mesh.getGridCoord(i, x, A_GRID);
-        double volume;
-        mesh.getCellVolume(i, volume);
+        mesh.getGridCoord(i, CENTER, x);
+        double volume = mesh.getCellVolume(i);
         for (int l = 0; l < 2; ++l) {
             tracerMeshCells(initTimeIdx+l, i).setCoord(x);
             tracerMeshCells(initTimeIdx+l, i).setVolume(volume);
         }
     }
-    cellCoords.reshape(3, mesh.getTotalNumGrid(A_GRID));
-    for (int i = 0; i < mesh.getTotalNumGrid(A_GRID); ++i) {
+    cellCoords.reshape(3, mesh.getTotalNumGrid(CENTER));
+    for (int i = 0; i < mesh.getTotalNumGrid(CENTER); ++i) {
         LADY_SPACE_COORD x = tracerMeshCells(initTimeIdx, i).getCoord();
         x.transformToCart(domain);
         cellCoords.col(i) = x.getCartCoord();
@@ -54,7 +52,7 @@ void AdvectionManager::registerTracer(const string &name, const string &units,
     tracerManager.registerTracer(name, units, brief);
     TimeLevelIndex<2> initTimeIdx;
     for (int l = 0; l < 2; ++l) {
-        for (int i = 0; i < tracerMeshCells.getMesh().getTotalNumGrid(A_GRID); ++i) {
+        for (int i = 0; i < tracerMeshCells.getMesh().getTotalNumGrid(CENTER); ++i) {
             tracerMeshCells(initTimeIdx+l, i).addSpecies();
         }
     }
@@ -68,10 +66,10 @@ void AdvectionManager::input(const TimeLevelIndex<2> &timeIdx,
     // transfer the input tracer density field into internal tracer mass field
     for (int s = 0; s < q.size(); ++s) {
 #ifdef DEBUG
-        assert(q[s]->getMesh().getTotalNumGrid(A_GRID) ==
-               tracerMeshCells.getMesh().getTotalNumGrid(A_GRID));
+        assert(q[s]->getMesh().getTotalNumGrid(CENTER) ==
+               tracerMeshCells.getMesh().getTotalNumGrid(CENTER));
 #endif
-        for (int i = 0; i < mesh.getTotalNumGrid(A_GRID); ++i) {
+        for (int i = 0; i < mesh.getTotalNumGrid(CENTER); ++i) {
             double &m = tracerMeshCells(timeIdx, i).getSpeciesMass(s);
             m = (*q[s])(timeIdx, i)*tracerMeshCells(timeIdx, i).getVolume();
         }
@@ -103,7 +101,7 @@ void AdvectionManager::output(const string &fileName,
     // define dimensions
     // =========================================================================
     // longitude dimension
-    if (nc_def_dim(ncId, "lon", mesh.getNumGrid(0, CENTER), &lonDimId)
+    if (nc_def_dim(ncId, "lon", mesh.getNumGrid(0, FULL), &lonDimId)
         != NC_NOERR) {
         REPORT_ERROR("Failed to define dimension lon!");
     }
@@ -115,7 +113,7 @@ void AdvectionManager::output(const string &fileName,
     nc_put_att(ncId, lonVarId, "units", NC_CHAR, 12, "degrees_east");
     // =========================================================================
     // latitude dimension
-    if (nc_def_dim(ncId, "lat", mesh.getNumGrid(1, CENTER), &latDimId)
+    if (nc_def_dim(ncId, "lat", mesh.getNumGrid(1, FULL), &latDimId)
         != NC_NOERR) {
         REPORT_ERROR("Failed to define dimension lat!");
     }
@@ -150,19 +148,19 @@ void AdvectionManager::output(const string &fileName,
     // -------------------------------------------------------------------------
     // put variables
     // =========================================================================
-    lon = mesh.getGridCoords(0, CENTER)/RAD;
-    lat = mesh.getGridCoords(1, CENTER)/RAD;
+    lon = mesh.getGridCoords(0, FULL)/RAD;
+    lat = mesh.getGridCoords(1, FULL)/RAD;
     nc_put_var(ncId, lonVarId, lon.memptr());
     nc_put_var(ncId, latVarId, lat.memptr());
-    double *x  = new double[mesh.getTotalNumGrid(A_GRID)];
+    double *x  = new double[mesh.getTotalNumGrid(CENTER)];
     for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
-        for (int i = 0; i < mesh.getTotalNumGrid(A_GRID); ++i) {
+        for (int i = 0; i < mesh.getTotalNumGrid(CENTER); ++i) {
             x[i] = tracerMeshCells(oldTimeIdx, i).getSpeciesMass(s)/
                    tracerMeshCells(oldTimeIdx, i).getVolume();
         }
         nc_put_var(ncId, qVarIds[s], x);
     }
-    for (int i = 0; i < mesh.getTotalNumGrid(A_GRID); ++i) {
+    for (int i = 0; i < mesh.getTotalNumGrid(CENTER); ++i) {
         x[i] = tracerMeshCells(oldTimeIdx, i).getVolume();
     }
     nc_put_var(ncId, volVarId, x);
@@ -174,7 +172,7 @@ void AdvectionManager::diagnose(const TimeLevelIndex<2> &timeIdx) {
     // print total mass for each species
     for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
         double totalMass = 0.0;
-        for (int i = 0; i < tracerMeshCells.getMesh().getTotalNumGrid(A_GRID); ++i) {
+        for (int i = 0; i < tracerMeshCells.getMesh().getTotalNumGrid(CENTER); ++i) {
             totalMass += tracerMeshCells(timeIdx, i).getSpeciesMass(s);
         }
         REPORT_NOTICE("Total mass of " <<
@@ -184,11 +182,11 @@ void AdvectionManager::diagnose(const TimeLevelIndex<2> &timeIdx) {
 }
 
 void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
-                               const geomtk::RLLVelocityField &V) {
+                               const geomtk::RLLVelocityField &velocity) {
     static clock_t time1, time2;
     
     time1 = clock();
-    integrate_RK4(dt, newTimeIdx, V);
+    integrate_RK4(dt, newTimeIdx, velocity);
     time2 = clock();
     REPORT_NOTICE("integrate_RK uses " << setw(6) << setprecision(2) << (double)(time2-time1)/CLOCKS_PER_SEC << " seconds.");
     
@@ -201,7 +199,7 @@ void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
     remapTracersToMesh(newTimeIdx);
     time2 = clock();
     REPORT_NOTICE("remapTracersToMesh uses " << setw(6) << setprecision(2) << (double)(time2-time1)/CLOCKS_PER_SEC << " seconds.");
-    
+
 //    diagnose(newTimeIdx);
 }
 
@@ -224,10 +222,10 @@ void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
 
 void AdvectionManager::integrate_RK4(double dt,
                                      const TimeLevelIndex<2> &newTimeIdx,
-                                     const LADY_VELOCITY_FIELD &V) {
+                                     const LADY_VELOCITY_FIELD &velocity) {
     TimeLevelIndex<2> oldTimeIdx = newTimeIdx-1;
     TimeLevelIndex<2> halfTimeIdx = newTimeIdx-0.5;
-    const LADY_MESH &mesh = static_cast<const LADY_MESH&>(V.getMesh());
+    const LADY_MESH &mesh = static_cast<const LADY_MESH&>(velocity.getMesh());
     const LADY_DOMAIN &domain = static_cast<const LADY_DOMAIN&>(mesh.getDomain());
     double dt05 = 0.5*dt;
 #pragma omp parallel
@@ -258,19 +256,19 @@ void AdvectionManager::integrate_RK4(double dt,
                     idx0.setMoveOnPole(false);
                     idx1.setMoveOnPole(false);
                 }
-                regrid->run(BILINEAR, oldTimeIdx, V, x0, v1, &idx0);
+                regrid->run(BILINEAR, oldTimeIdx, velocity, x0, v1, &idx0);
                 // =============================================================
                 // stage 1
                 mesh.move(x0, dt05, v1, idx0, x1); idx1.locate(mesh, x1);
-                regrid->run(BILINEAR, halfTimeIdx, V, x1, v2, &idx1);
+                regrid->run(BILINEAR, halfTimeIdx, velocity, x1, v2, &idx1);
                 // =============================================================
                 // stage 2
                 mesh.move(x0, dt05, v2, idx0, x1); idx1.locate(mesh, x1);
-                regrid->run(BILINEAR, halfTimeIdx, V, x1, v3, &idx1);
+                regrid->run(BILINEAR, halfTimeIdx, velocity, x1, v3, &idx1);
                 // =============================================================
                 // stage 3
                 mesh.move(x0, dt, v3, idx0, x1); idx1.locate(mesh, x1);
-                regrid->run(BILINEAR, newTimeIdx, V, x1, v4, &idx1);
+                regrid->run(BILINEAR, newTimeIdx, velocity, x1, v4, &idx1);
                 // =============================================================
                 // stage 4
                 v = (v1+v2*2.0+v3*2.0+v4)/6.0;
@@ -292,22 +290,22 @@ void AdvectionManager::integrate_RK4(double dt,
                         idx0s[i]->setMoveOnPole(false);
                         idx1s[i]->setMoveOnPole(false);
                     }
-                    regrid->run(BILINEAR, oldTimeIdx, V, *x0s[i], v1, idx0s[i]);
+                    regrid->run(BILINEAR, oldTimeIdx, velocity, *x0s[i], v1, idx0s[i]);
                     // =========================================================
                     // stage 1
                     mesh.move(*x0s[i], dt05, v1, *idx0s[i], *x1s[i]);
                     idx1s[i]->locate(mesh, *x1s[i]);
-                    regrid->run(BILINEAR, halfTimeIdx, V, *x1s[i], v2, idx1s[i]);
+                    regrid->run(BILINEAR, halfTimeIdx, velocity, *x1s[i], v2, idx1s[i]);
                     // =========================================================
                     // stage 2
                     mesh.move(*x0s[i], dt05, v2, *idx0s[i], *x1s[i]);
                     idx1s[i]->locate(mesh, *x1s[i]);
-                    regrid->run(BILINEAR, halfTimeIdx, V, *x1s[i], v3, idx1s[i]);
+                    regrid->run(BILINEAR, halfTimeIdx, velocity, *x1s[i], v3, idx1s[i]);
                     // =========================================================
                     // stage 3
                     mesh.move(*x0s[i], dt, v3, *idx0s[i], *x1s[i]);
                     idx1s[i]->locate(mesh, *x1s[i]);
-                    regrid->run(BILINEAR, newTimeIdx, V, *x1s[i], v4, idx1s[i]);
+                    regrid->run(BILINEAR, newTimeIdx, velocity, *x1s[i], v4, idx1s[i]);
                     // =========================================================
                     // stage 4
                     v = (v1+v2*2.0+v3*2.0+v4)/6.0;
@@ -317,7 +315,7 @@ void AdvectionManager::integrate_RK4(double dt,
                 }
                 // -------------------------------------------------------------
                 (*tracer)->updateDeformMatrix(domain, mesh, newTimeIdx);
-                (*tracer)->selfInspect(domain, newTimeIdx);
+//                (*tracer)->selfInspect(domain, newTimeIdx);
             }
         }
     }
@@ -332,7 +330,7 @@ void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
     for (; tracer != tracerManager.tracers.end(); ++tracer) {
         (*tracer)->resetConnectedCells();
     }
-    for (int i = 0; i < mesh.getTotalNumGrid(A_GRID); ++i) {
+    for (int i = 0; i < mesh.getTotalNumGrid(CENTER); ++i) {
         tracerMeshCells(timeIdx, i).resetConnectedTracers();
     }
     // -------------------------------------------------------------------------
@@ -440,7 +438,7 @@ void AdvectionManager::remapMeshToTracers(const TimeLevelIndex<2> &timeIdx) {
 }
 
 void AdvectionManager::remapTracersToMesh(const TimeLevelIndex<2> &timeIdx) {
-    for (int i = 0; i < tracerMeshCells.getMesh().getTotalNumGrid(A_GRID); ++i) {
+    for (int i = 0; i < tracerMeshCells.getMesh().getTotalNumGrid(CENTER); ++i) {
         tracerMeshCells(timeIdx, i).resetSpeciesMass();
     }
     LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();

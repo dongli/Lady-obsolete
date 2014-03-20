@@ -1,8 +1,8 @@
 #include "lady.h"
 
-#define USE_DEFORMATION_TEST_CASE 0
-#define USE_SOLID_ROTATION_TEST_CASE 1
-#define CALCULATE_SOLUTION 1
+#define USE_DEFORMATION_TEST_CASE 1
+#define USE_SOLID_ROTATION_TEST_CASE 0
+#define CALCULATE_SOLUTION 0
 
 int main(int argc, const char *argv[])
 {
@@ -13,7 +13,7 @@ int main(int argc, const char *argv[])
     lady::SolidRotationTestCase testCase;
 #endif
     lady::AdvectionManager advectionManager;
-    geomtk::StampString o1("tracers.solid_rotation.true_solution.", ".nc");
+    geomtk::StampString o1("tracers.deform.128x64.2.", ".nc");
     geomtk::TimeManager timeManager;
     geomtk::TimeLevelIndex<2> oldTimeIdx;
     // -------------------------------------------------------------------------
@@ -21,7 +21,7 @@ int main(int argc, const char *argv[])
     timeManager.init(testCase.getStartTime(), testCase.getEndTime(),
                      testCase.getStepSize());
 
-    advectionManager.init(testCase.getDomain(), testCase.getMesh(), 256, 128);
+    advectionManager.init(testCase.getDomain(), testCase.getMesh(), 128, 64);
 
     testCase.calcInitCond(advectionManager);
     testCase.advance(timeManager.getSeconds(), oldTimeIdx);
