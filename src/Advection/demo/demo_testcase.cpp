@@ -13,7 +13,7 @@ int main(int argc, const char *argv[])
     lady::SolidRotationTestCase testCase;
 #endif
     lady::AdvectionManager advectionManager;
-    geomtk::StampString o1("tracers.deform.128x64.2.", ".nc");
+    geomtk::StampString o1("tracers.deform.128x64.", ".nc");
     geomtk::TimeManager timeManager;
     geomtk::TimeLevelIndex<2> oldTimeIdx;
     // -------------------------------------------------------------------------
