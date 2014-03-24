@@ -7,13 +7,15 @@ begin
     start_time = 0
     end_time = 0
     time_step = 1
+    file_prefix = "tracers.deform.128x64"
+
     fs = systemfunc("for (( i = "+start_time+"; i <= "+end_time+"; "+ \
         "i = i+"+time_step+" )); "+ \
-        "do printf '../build/Debug/tracers.solid_rotation.true_solution.%3.3d.nc\n' $i; done")
+        "do printf '../build/Debug/"+file_prefix+".%3.3d.nc\n' $i; done")
 
     num_time = dimsizes(fs)
 
-    wks = gsn_open_wks("pdf", "cells")
+    wks = gsn_open_wks("pdf", file_prefix+".cells")
 
     gsn_define_colormap(wks, "WhBlGrYeRe")
 

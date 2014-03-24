@@ -74,50 +74,50 @@ void DeformationTestCase::advance(double time,
     // advance velocity
     if (subCase == CASE1) {
         k = 2.4;
-        for (int j = 0; j < mesh->getNumGrid(1, FULL); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, HALF); ++i) {
-                double lon = mesh->getGridCoordComp(0, HALF, i);
-                double lat = mesh->getGridCoordComp(1, FULL, j);
+        for (int j = 0; j < mesh->getNumGrid(1, velocity(0).getGridType(1)); ++j) {
+            for (int i = 0; i < mesh->getNumGrid(0, velocity(0).getGridType(0)); ++i) {
+                double lon = mesh->getGridCoordComp(0, velocity(0).getGridType(0), i);
+                double lat = mesh->getGridCoordComp(1, velocity(0).getGridType(1), j);
                 velocity(0)(timeIdx, i, j) = k*pow(sin(lon*0.5), 2.0)*sin(lat*2.0)*cosT;
             }
         }
-        for (int j = 0; j < mesh->getNumGrid(1, HALF); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, FULL); ++i) {
-                double lon = mesh->getGridCoordComp(0, FULL, i);
-                double lat = mesh->getGridCoordComp(1, HALF, j);
+        for (int j = 0; j < mesh->getNumGrid(1, velocity(1).getGridType(1)); ++j) {
+            for (int i = 0; i < mesh->getNumGrid(0, velocity(1).getGridType(0)); ++i) {
+                double lon = mesh->getGridCoordComp(0, velocity(1).getGridType(0), i);
+                double lat = mesh->getGridCoordComp(1, velocity(1).getGridType(1), j);
                 velocity(1)(timeIdx, i, j) = k*0.5*sin(lon)*cos(lat)*cosT;
             }
         }
     } else if (subCase == CASE2) {
         k = 2.0;
-        for (int j = 0; j < mesh->getNumGrid(1, FULL); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, HALF); ++i) {
-                double lon = mesh->getGridCoordComp(0, HALF, i);
-                double lat = mesh->getGridCoordComp(1, FULL, j);
+        for (int j = 0; j < mesh->getNumGrid(1, velocity(0).getGridType(1)); ++j) {
+            for (int i = 0; i < mesh->getNumGrid(0, velocity(0).getGridType(0)); ++i) {
+                double lon = mesh->getGridCoordComp(0, velocity(0).getGridType(0), i);
+                double lat = mesh->getGridCoordComp(1, velocity(0).getGridType(1), j);
                 velocity(0)(timeIdx, i, j) = k*pow(sin(lon), 2.0)*sin(lat*2.0)*cosT;
             }
         }
-        for (int j = 0; j < mesh->getNumGrid(1, HALF); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, FULL); ++i) {
-                double lon = mesh->getGridCoordComp(0, FULL, i);
-                double lat = mesh->getGridCoordComp(1, HALF, j);
+        for (int j = 0; j < mesh->getNumGrid(1, velocity(1).getGridType(1)); ++j) {
+            for (int i = 0; i < mesh->getNumGrid(0, velocity(1).getGridType(0)); ++i) {
+                double lon = mesh->getGridCoordComp(0, velocity(1).getGridType(0), i);
+                double lat = mesh->getGridCoordComp(1, velocity(1).getGridType(1), j);
                 velocity(1)(timeIdx, i, j) = k*sin(lon*2.0)*cos(lat)*cosT;
             }
         }
     } else if (subCase == CASE3) {
         k = 1.0;
-        for (int j = 0; j < mesh->getNumGrid(1, FULL); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, HALF); ++i) {
-                double lon = mesh->getGridCoordComp(0, HALF, i);
-                double lat = mesh->getGridCoordComp(1, FULL, j);
+        for (int j = 0; j < mesh->getNumGrid(1, velocity(0).getGridType(1)); ++j) {
+            for (int i = 0; i < mesh->getNumGrid(0, velocity(0).getGridType(0)); ++i) {
+                double lon = mesh->getGridCoordComp(0, velocity(0).getGridType(0), i);
+                double lat = mesh->getGridCoordComp(1, velocity(0).getGridType(1), j);
                 velocity(0)(timeIdx, i, j) = -k*pow(sin(lon), 2.0)*sin(lat*2.0)*
                                         pow(cos(lat), 2.0)*cosT;
             }
         }
-        for (int j = 0; j < mesh->getNumGrid(1, HALF); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, FULL); ++i) {
-                double lon = mesh->getGridCoordComp(0, FULL, i);
-                double lat = mesh->getGridCoordComp(1, HALF, j);
+        for (int j = 0; j < mesh->getNumGrid(1, velocity(1).getGridType(1)); ++j) {
+            for (int i = 0; i < mesh->getNumGrid(0, velocity(1).getGridType(0)); ++i) {
+                double lon = mesh->getGridCoordComp(0, velocity(1).getGridType(0), i);
+                double lat = mesh->getGridCoordComp(1, velocity(1).getGridType(1), j);
                 velocity(1)(timeIdx, i, j) = k*0.5*sin(lon)*pow(cos(lat), 3.0)*cosT;
             }
         }
@@ -125,17 +125,17 @@ void DeformationTestCase::advance(double time,
         k = 10.0*R/period;
         double c1 = PI2*time/period;
         double c2 = PI2*R/period;
-        for (int j = 0; j < mesh->getNumGrid(1, FULL); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, HALF); ++i) {
-                double lon = mesh->getGridCoordComp(0, HALF, i)-c1;
-                double lat = mesh->getGridCoordComp(1, FULL, j);
+        for (int j = 0; j < mesh->getNumGrid(1, velocity(0).getGridType(1)); ++j) {
+            for (int i = 0; i < mesh->getNumGrid(0, velocity(0).getGridType(0)); ++i) {
+                double lon = mesh->getGridCoordComp(0, velocity(0).getGridType(0), i)-c1;
+                double lat = mesh->getGridCoordComp(1, velocity(0).getGridType(1), j);
                 velocity(0)(timeIdx, i, j) = k*pow(sin(lon), 2.0)*sin(lat*2.0)*cosT+c2*cos(lat);
             }
         }
-        for (int j = 0; j < mesh->getNumGrid(1, HALF); ++j) {
-            for (int i = 0; i < mesh->getNumGrid(0, FULL); ++i) {
-                double lon = mesh->getGridCoordComp(0, FULL, i)-c1;
-                double lat = mesh->getGridCoordComp(1, HALF, j);
+        for (int j = 0; j < mesh->getNumGrid(1, velocity(1).getGridType(1)); ++j) {
+            for (int i = 0; i < mesh->getNumGrid(0, velocity(1).getGridType(0)); ++i) {
+                double lon = mesh->getGridCoordComp(0, velocity(1).getGridType(0), i)-c1;
+                double lat = mesh->getGridCoordComp(1, velocity(1).getGridType(1), j);
                 velocity(1)(timeIdx, i, j) = k*sin(lon*2.0)*cos(lat)*cosT;
             }
         }

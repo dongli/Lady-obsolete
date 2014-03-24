@@ -26,7 +26,7 @@ begin
     num_skel2 = dims(1)
     delete(dims)
 
-    wks = gsn_open_wks("pdf", "tracers")
+    wks = gsn_open_wks("pdf", file_prefix+".tracers")
 
     point_size = 0.005
 
@@ -81,6 +81,7 @@ begin
         end do
         ; tracer shape
         if (.not. isdefined("check")) then
+            frame(wks)
             continue
         end if
         do k = 0, dimsizes(check)-1

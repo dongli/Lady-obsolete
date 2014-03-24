@@ -87,17 +87,17 @@ double SolidRotationTestCase::getStepSize() const {
 void SolidRotationTestCase::advance(double time,
                                     const TimeLevelIndex<2> &timeIdx) {
     double sinAlpha = sin(alpha), cosAlpha = cos(alpha);
-    for (int j = 0; j < mesh->getNumGrid(1, FULL); ++j) {
-        double cosLat = mesh->getCosLat(FULL, j);
-        double sinLat = mesh->getSinLat(FULL, j);
-        for (int i = 0; i < mesh->getNumGrid(0, HALF); ++i) {
-            double cosLon = mesh->getCosLon(HALF, i);
+    for (int j = 0; j < mesh->getNumGrid(1, velocity(0).getGridType(1)); ++j) {
+        double cosLat = mesh->getCosLat(velocity(0).getGridType(1), j);
+        double sinLat = mesh->getSinLat(velocity(0).getGridType(1), j);
+        for (int i = 0; i < mesh->getNumGrid(0, velocity(0).getGridType(0)); ++i) {
+            double cosLon = mesh->getCosLon(velocity(0).getGridType(0), i);
             velocity(0)(timeIdx, i, j) = U0*(cosLat*cosAlpha+sinLat*cosLon*sinAlpha);
         }
     }
-    for (int j = 0; j < mesh->getNumGrid(1, HALF); ++j) {
-        for (int i = 0; i < mesh->getNumGrid(0, FULL); ++i) {
-            double sinLon = mesh->getSinLon(FULL, i);
+    for (int j = 0; j < mesh->getNumGrid(1, velocity(1).getGridType(1)); ++j) {
+        for (int i = 0; i < mesh->getNumGrid(0, velocity(1).getGridType(0)); ++i) {
+            double sinLon = mesh->getSinLon(velocity(1).getGridType(0), i);
             velocity(1)(timeIdx, i, j) = -U0*sinLon*sinAlpha;
         }
     }
