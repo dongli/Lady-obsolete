@@ -1,8 +1,8 @@
 #include "lady.h"
 
 #define USE_DEFORMATION_TEST_CASE 0
-#define USE_SOLID_ROTATION_TEST_CASE 0
-#define USE_BAROTROPIC_TEST_CASE 1
+#define USE_SOLID_ROTATION_TEST_CASE 1
+#define USE_BAROTROPIC_TEST_CASE 0
 #define CALCULATE_SOLUTION 0
 
 int main(int argc, const char *argv[])
@@ -29,9 +29,9 @@ int main(int argc, const char *argv[])
     advectionManager.init(testCase.getDomain(), testCase.getMesh(), 80, 40);
 
     testCase.calcInitCond(advectionManager);
-    testCase.advance(timeManager.getSeconds(), oldTimeIdx);
-
     advectionManager.output(o1.run("%3.3d", timeManager.getNumStep()), oldTimeIdx);
+
+    testCase.advance(timeManager.getSeconds(), oldTimeIdx);
     // -------------------------------------------------------------------------
     // integration loop
     while (!timeManager.isFinished()) {

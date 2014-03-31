@@ -13,12 +13,6 @@ TracerMeshCell::~TracerMeshCell() {
     }
 }
 
-void TracerMeshCell::resetSpeciesMass() {
-    for (int i = 0; i < m.size(); ++i) {
-        m[i] = 0.0;
-    }
-}
-
 void TracerMeshCell::resetConnectedTracers() {
     numConnectedTracer = 0;
     totalRemapWeight = 0;

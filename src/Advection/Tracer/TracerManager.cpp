@@ -168,7 +168,7 @@ void TracerManager::output(const string &fileName,
     int numTracerDimId, numSkel1DimId, numSkel2DimId, numDimDimId, numSpeciesDimId;
     int cDimIds[2], cVarId;
     int hDimIds[3], hVarId;
-    int mDimIds[2], mVarId;
+    int rhoDimIds[2], rhoVarId;
     int sDimIds[3], s1VarId, s2VarId;
     char str[100];
     int l, numSkel2 = 40;
@@ -242,13 +242,13 @@ void TracerManager::output(const string &fileName,
         REPORT_ERROR("Failed to put attribute in \"" << fileName << "\"!");
     }
     
-    mDimIds[0] = numTracerDimId;
-    mDimIds[1] = numSpeciesDimId;
-    if (nc_def_var(ncId, "m", NC_DOUBLE, 2, mDimIds, &mVarId) != NC_NOERR) {
-        REPORT_ERROR("Failed to define variable \"m\"!");
+    rhoDimIds[0] = numTracerDimId;
+    rhoDimIds[1] = numSpeciesDimId;
+    if (nc_def_var(ncId, "rho", NC_DOUBLE, 2, rhoDimIds, &rhoVarId) != NC_NOERR) {
+        REPORT_ERROR("Failed to define variable \"rho\"!");
     }
-    sprintf(str, "tracer species mass");
-    if (nc_put_att(ncId, mVarId, "long_name", NC_CHAR, strlen(str), str)
+    sprintf(str, "tracer species denisty");
+    if (nc_put_att(ncId, rhoVarId, "long_name", NC_CHAR, strlen(str), str)
         != NC_NOERR) {
         REPORT_ERROR("Failed to put attribute in \"" << fileName << "\"!");
     }
@@ -313,10 +313,10 @@ void TracerManager::output(const string &fileName,
     l = 0;
     for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
         for (int s = 0; s < getNumSpecies(); ++s) {
-            data[l++] = (*tracer)->getSpeciesMass(s);
+            data[l++] = (*tracer)->getSpeciesDensity(s);
         }
     }
-    if (nc_put_var(ncId, mVarId, data) != NC_NOERR) {
+    if (nc_put_var(ncId, rhoVarId, data) != NC_NOERR) {
         REPORT_ERROR("Failed to put variable in \"" << fileName << "\"!");
     }
     delete [] data;

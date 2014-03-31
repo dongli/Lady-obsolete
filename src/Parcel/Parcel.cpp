@@ -8,6 +8,7 @@ Parcel::Parcel(int numDim) {
         q.getLevel(l) = new LADY_SPACE_COORD(numDim);
         H.getLevel(l) = new LADY_MATRIX(numDim, numDim);
         invH.getLevel(l) = new LADY_MATRIX(numDim, numDim);
+        idx.getLevel(l) = new LADY_MESH_INDEX(numDim);
     }
 }
 
@@ -16,6 +17,7 @@ Parcel::~Parcel() {
         delete q.getLevel(l);
         delete H.getLevel(l);
         delete invH.getLevel(l);
+        delete idx.getLevel(l);
     }
 }
     
@@ -27,6 +29,7 @@ Parcel& Parcel::operator=(const Parcel &other) {
             detH.getLevel(l) = other.detH.getLevel(l);
             *(invH.getLevel(l)) = *(other.invH.getLevel(l));
             shapeSize.getLevel(l) = other.shapeSize.getLevel(l);
+            *(idx.getLevel(l)) = *(other.idx.getLevel(l));
         }
     }
     return *this;

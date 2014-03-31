@@ -9,9 +9,9 @@ namespace lady {
 class TracerMeshCell {
 protected:
     int ID;
-    LADY_SPACE_COORD *x; //>! center grid coordinate
-    double volume; //>! cell volume for converting density and mass
-    vector<double> m; //>! species mass array
+    LADY_SPACE_COORD *x;    //>! center grid coordinate
+    double volume;          //>! cell volume for converting density and mass
+    vector<double> density; //>! species density array
     // remapping parameters
     int numConnectedTracer;
     vector<Tracer*> connectedTracers;
@@ -56,17 +56,38 @@ public:
     /**
      *  Add a species.
      */
-    void addSpecies() { m.push_back(0.0); }
+    void addSpecies() { density.push_back(0); }
 
-    double& getSpeciesMass(int s) { return m[s]; }
-    double getSpeciesMass(int s) const { return m[s]; }
+    double& getSpeciesDensity(int speciesIdx) {
+#ifdef DEBUG
+        if (speciesIdx >= density.size()) {
+            REPORT_ERROR("Species index " << speciesIdx << " exceeds range [0," <<
+                         density.size()-1 << "]!");
+        }
+#endif
+        return density[speciesIdx];
+    }
+
+    double getSpeciesDensity(int speciesIdx) const {
+#ifdef DEBUG
+        if (speciesIdx >= density.size()) {
+            REPORT_ERROR("Species index " << speciesIdx << " exceeds range [0," <<
+                         density.size()-1 << "]!");
+        }
+#endif
+        return density[speciesIdx];
+    }
+
+    void resetSpecies() {
+        for (int s = 0; s < density.size(); ++s) {
+            density[s] = 0;
+        }
+    }
 
     /**
      *  Reset the connected tracer to empty for later updating.
      */
     void resetConnectedTracers();
-
-    void resetSpeciesMass();
 
     void connect(Tracer *tracer, double weight);
     

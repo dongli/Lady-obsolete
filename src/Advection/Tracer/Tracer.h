@@ -15,7 +15,7 @@ class TracerMeshCell;
  */
 class Tracer : public Parcel {
 protected:
-    vector<double> m; //>! species mass array
+    vector<double> density; //>! species density array
     TracerSkeleton *skeleton;
 
     /**
@@ -31,11 +31,33 @@ public:
     /**
      *  Add a species.
      */
-    void addSpecies();
+    void addSpecies() { density.push_back(0); }
 
-    double& getSpeciesMass(int speciesIdx);
-    double getSpeciesMass(int speciesIdx) const;
-    void resetSpeciesMass();
+    double& getSpeciesDensity(int speciesIdx) {
+#ifdef DEBUG
+        if (speciesIdx >= density.size()) {
+            REPORT_ERROR("Species index " << speciesIdx << " exceeds range [0," <<
+                         density.size()-1 << "]!");
+        }
+#endif
+        return density[speciesIdx];
+    }
+
+    double getSpeciesDensity(int speciesIdx) const {
+#ifdef DEBUG
+        if (speciesIdx >= density.size()) {
+            REPORT_ERROR("Species index " << speciesIdx << " exceeds range [0," <<
+                         density.size()-1 << "]!");
+        }
+#endif
+        return density[speciesIdx];
+    }
+
+    void resetSpecies() {
+        for (int s = 0; s < density.size(); ++s) {
+            density[s] = 0.0;
+        }
+    }
 
     Tracer& operator=(const Tracer &other);
 
@@ -79,7 +101,10 @@ public:
     
     int getNumConnectedCell() const { return numConnectedCell; }
 
-    double getTotalRemapWeight() const;
+    double getTotalRemapWeight() const {
+        assert(totalRemapWeight != 0.0);
+        return totalRemapWeight;
+    }
 
     /**
      *  Update deformation matrix from tracer skeleton.

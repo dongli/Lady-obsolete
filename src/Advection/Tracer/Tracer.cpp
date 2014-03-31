@@ -5,49 +5,19 @@
 namespace lady {
 
 Tracer::Tracer(int numDim) : Parcel(numDim) {
-    for (int l = 0; l < idx.getNumLevel(); ++l) {
-        idx.getLevel(l) = new LADY_MESH_INDEX(numDim);
-    }
     skeleton = new TracerSkeleton(this, numDim);
     numConnectedCell = 0;
 }
 
 Tracer::~Tracer() {
-    for (int l = 0; l < idx.getNumLevel(); ++l) {
-        delete idx.getLevel(l);
-    }
     delete skeleton;
-}
-    
-void Tracer::addSpecies() {
-    m.push_back(0.0);
-}
-
-double& Tracer::getSpeciesMass(int s) {
-#ifdef DEBUG
-    if (s >= m.size()) {
-        REPORT_ERROR("Species index " << s << " exceeds range [0," <<
-                     m.size()-1 << "]!");
-    }
-#endif
-    return m[s];
-}
-
-double Tracer::getSpeciesMass(int s) const {
-#ifdef DEBUG
-    if (s >= m.size()) {
-        REPORT_ERROR("Species index " << s << " exceeds range [0," <<
-                     m.size()-1 << "]!");
-    }
-#endif
-    return m[s];
 }
 
 Tracer& Tracer::operator=(const Tracer &other) {
     Parcel::operator=(other);
     if (this != &other) {
-        for (int l = 0; l < idx.getNumLevel(); ++l) {
-            *(idx.getLevel(l)) = *(other.idx.getLevel(l));
+        for (int s = 0; s < density.size(); ++s) {
+            density[s] = other.density[s];
         }
         *skeleton = *(other.skeleton);
         // TODO: Handle connected cells.
@@ -60,12 +30,6 @@ void Tracer::resetConnectedCells() {
     totalRemapWeight = 0.0;
 }
 
-void Tracer::resetSpeciesMass() {
-    for (int s = 0; s < m.size(); ++s) {
-        m[s] = 0.0;
-    }
-}
-
 void Tracer::connect(TracerMeshCell *cell, double weight) {
     if (numConnectedCell == connectedCells.size()) {
         connectedCells.push_back(cell);
@@ -74,11 +38,6 @@ void Tracer::connect(TracerMeshCell *cell, double weight) {
     }
     numConnectedCell++;
     totalRemapWeight += weight;
-}
-
-double Tracer::getTotalRemapWeight() const {
-    assert(totalRemapWeight != 0.0);
-    return totalRemapWeight;
 }
     
 void Tracer::updateDeformMatrix(const LADY_DOMAIN &domain,
