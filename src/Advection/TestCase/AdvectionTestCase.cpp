@@ -11,16 +11,8 @@ AdvectionTestCase::~AdvectionTestCase() {
     }
 }
 
-const LADY_DOMAIN& AdvectionTestCase::getDomain() const {
-    return *domain;
-}
-
-const LADY_MESH& AdvectionTestCase::getMesh() const {
-    return *mesh;
-}
-
-const LADY_VELOCITY_FIELD& AdvectionTestCase::getVelocityField() const {
-    return velocity;
+void AdvectionTestCase::init(const geomtk::TimeManager &timeManager) {
+    this->timeManager = &timeManager;
 }
 
 void AdvectionTestCase::outputVelocity(const string &fileName,

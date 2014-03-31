@@ -34,6 +34,8 @@ public:
     void registerTracer(const string &name, const string &units,
                         const string &brief);
 
+    const LADY_LIST<Tracer*>& getTracers() { return tracers; }
+
     /**
      *  Return the tracer species index based on the given name.
      *

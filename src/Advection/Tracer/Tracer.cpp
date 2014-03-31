@@ -139,20 +139,24 @@ void Tracer::updateDeformMatrix(const LADY_DOMAIN &domain,
             }
         }
         
-//        if (ID == 115) {
-//            std::ofstream file("x.dat");
-//            for (int i = 0; i < x.size(); ++i) file << x[i] << endl;
-//            file.close();
-//            file.open("H.dat");
-//            file << H0 << endl;
-//            H0(0, 0) = h11_1; H0(0, 1) = h12_2; H0(1, 0) = h21_1; H0(1, 1) = h22_2;
-//            file << H0 << endl;
-//            H0(0, 0) = h11_1; H0(0, 1) = h12_4; H0(1, 0) = h21_1; H0(1, 1) = h22_4;
-//            file << H0 << endl;
-//            H0(0, 0) = h11_3; H0(0, 1) = h12_2; H0(1, 0) = h21_3; H0(1, 1) = h22_2;
-//            file << H0 << endl;
-//            H0(0, 0) = h11_3; H0(0, 1) = h12_4; H0(1, 0) = h21_3; H0(1, 1) = h22_4;
-//            file << H0 << endl;
+//        if (ID == 1963) {
+//            std::ofstream file("deform_matrix.dat");
+//            file << "H = new((/5,2,2/), double)" << endl;
+//            file << "H(0,:,:) = (/(/" << H0(0, 0) << "," << H0(0, 1) << "/), \\" << endl;
+//            file << "             (/" << H0(1, 0) << "," << H0(1, 1) << "/)/)" << endl;
+//            file << "H(1,:,:) = (/(/" << h11_1 << "," << h12_2 << "/), \\" << endl;
+//            file << "             (/" << h21_1 << "," << h22_2 << "/)/)" << endl;
+//            file << "H(2,:,:) = (/(/" << h11_1 << "," << h12_4 << "/), \\" << endl;
+//            file << "             (/" << h21_1 << "," << h22_4 << "/)/)" << endl;
+//            file << "H(3,:,:) = (/(/" << h11_3 << "," << h12_2 << "/), \\" << endl;
+//            file << "             (/" << h21_3 << "," << h22_2 << "/)/)" << endl;
+//            file << "H(4,:,:) = (/(/" << h11_3 << "," << h12_4 << "/), \\" << endl;
+//            file << "             (/" << h21_3 << "," << h22_4 << "/)/)" << endl;
+//            file << "xs = new((/4,2/), double)" << endl;
+//            file << "xs(0,:) = (/" << xl[0][0] << "," << xl[0][1] << "/)" << endl;
+//            file << "xs(1,:) = (/" << xl[1][0] << "," << xl[1][1] << "/)" << endl;
+//            file << "xs(2,:) = (/" << xl[2][0] << "," << xl[2][1] << "/)" << endl;
+//            file << "xs(3,:) = (/" << xl[3][0] << "," << xl[3][1] << "/)" << endl;
 //            file.close();
 //            CHECK_POINT
 //        }

@@ -45,6 +45,30 @@ else ()
     endif ()
 endif ()
 
+# NLopt
+set (nlopt_internal_root "${PROJECT_SOURCE_DIR}/external/nlopt-2.4.1")
+if (EXISTS "${nlopt_internal_root}" AND NOT ${USE_SYSTEM_NLOPT})
+    # use internal NLopt
+    message ("@@ Use internal library NLopt!")
+    add_subdirectory ("${nlopt_internal_root}")
+else ()
+    # use user provided NLopt
+    if (DEFINED ENV{NLOPT_ROOT})
+        message ("@@ Use user provided library NLopt.")
+        message ("@@ NLOPT_ROOT = $ENV{NLOPT_ROOT}")
+        set (NLOPT_INCLUDE_DIR "$ENV{NLOPT_ROOT}/include")
+        set (NLOPT_LIBRARY_DIR "$ENV{NLOPT_ROOT}/lib")
+        include_directories (${NLOPT_INCLUDE_DIR})
+        link_directories (${NLOPT_LIBRARY_DIR})
+    else ()
+        message (FATAL_ERROR
+            "CMake couldn't find library NLopt! "
+            "If it have been installed and you know where it is, "
+            "set NLOPT_ROOT (e.g. in .bashrc) to it."
+        )
+    endif ()
+endif ()
+
 # GeoMTK
 add_subdirectory ("${PROJECT_SOURCE_DIR}/external/geomtk")
 include_directories (
@@ -52,6 +76,15 @@ include_directories (
 )
 link_directories (
     ${GEOMTK_LIBRARY_DIRS}
+)
+
+# Barotropic-model
+add_subdirectory ("${PROJECT_SOURCE_DIR}/external/barotropic-model")
+include_directories (
+    ${BAROTROPIC_MODEL_INCLUDE_DIRS}
+)
+link_directories (
+    ${BAROTROPIC_MODEL_LIBRARY_DIRS}
 )
 
 # ------------------------------------------------------------------------------
@@ -81,8 +114,8 @@ endforeach ()
 # ------------------------------------------------------------------------------
 # library targets
 add_library (lady STATIC ${headers} ${sources})
-target_link_libraries (lady mlpack)
-add_dependencies (lady geomtk)
+target_link_libraries (lady mlpack nlopt)
+add_dependencies (lady geomtk barotropic-model)
 
 # ------------------------------------------------------------------------------
 # executable targets
@@ -93,7 +126,7 @@ foreach (dir ${source_directories})
         foreach (demo_path ${demo_paths})
             get_filename_component (demo ${demo_path} NAME_WE)
             add_executable (${demo} ${demo_path})
-            target_link_libraries (${demo} geomtk lady)
+            target_link_libraries (${demo} geomtk lady barotropic-model)
         endforeach ()
     endif ()
 endforeach ()

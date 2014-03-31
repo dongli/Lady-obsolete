@@ -17,7 +17,7 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
     this->domain = &domain;
     int numTracer = 0;
     // calculate the total number of tracers
-//#define USE_FULL_LAT_LON
+#define USE_FULL_LAT_LON
 #ifdef LADY_USE_SPHERE_DOMAIN
 #ifdef USE_FULL_LAT_LON
     numTracer = numTracerX*numTracerY;
@@ -111,8 +111,9 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
         }
 #endif
         x0.transformToCart(domain);
-        h(0) = 2.0*dlon*domain.getRadius()*x0.getCosLat();;
-        h(1) = 2.0*dlat*domain.getRadius();
+        h(0) = dlon*domain.getRadius()*x0.getCosLat();
+        h(1) = dlat*domain.getRadius();
+        h *= 0.5*(cos(x0(1))+1);
 #else
         REPORT_ERROR("Under construction!");
 #endif

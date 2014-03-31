@@ -13,6 +13,7 @@ AdvectionManager::~AdvectionManager() {
     if (regrid != NULL) {
         delete regrid;
     }
+    delete cellTree;
     REPORT_OFFLINE;
 }
 
@@ -25,21 +26,20 @@ void AdvectionManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
     }
     TimeLevelIndex<2> initTimeIdx;
     tracerMeshCells.create("", "", "mesh cells for storing tracers", mesh, CENTER);
-    cellCoords.reshape(3, mesh.getTotalNumGrid(CENTER));
     for (int i = 0; i < mesh.getTotalNumGrid(CENTER); ++i) {
         LADY_SPACE_COORD x(domain.getNumDim());
         mesh.getGridCoord(i, CENTER, x);
+        x.transformToCart(domain);
         double volume = mesh.getCellVolume(i);
         for (int l = 0; l < 2; ++l) {
             tracerMeshCells(initTimeIdx+l, i).setCoord(x);
             tracerMeshCells(initTimeIdx+l, i).setVolume(volume);
+            tracerMeshCells(initTimeIdx+l, i).setID(i);
         }
     }
     cellCoords.reshape(3, mesh.getTotalNumGrid(CENTER));
     for (int i = 0; i < mesh.getTotalNumGrid(CENTER); ++i) {
-        LADY_SPACE_COORD x = tracerMeshCells(initTimeIdx, i).getCoord();
-        x.transformToCart(domain);
-        cellCoords.col(i) = x.getCartCoord();
+        cellCoords.col(i) = tracerMeshCells(initTimeIdx, i).getCoord().getCartCoord();
     }
     cellTree = new Tree(cellCoords, cellCoordsMap);
     cellCoords = cellTree->Dataset();
@@ -77,8 +77,10 @@ void AdvectionManager::input(const TimeLevelIndex<2> &timeIdx,
     // -------------------------------------------------------------------------
     // transfer the tracer mass from cells to tracers
     remapMeshToTracers(timeIdx);
+    diagnose(timeIdx);
     // TODO: The mass on cells could be different after remapping from tracers.
     remapTracersToMesh(timeIdx);
+    diagnose(timeIdx);
 }
 
 void AdvectionManager::output(const string &fileName,
@@ -379,7 +381,7 @@ void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
         file << "ngb = new((/" << (*tracer)->getConnectedCells().size() << ",2/), double)" << endl;
         for (int m = 0; m < 2; ++m) {
             file << "ngb(:," << m << ") = (/";
-            list<TracerMeshCell*>::iterator cell = (*tracer)->getConnectedCells().begin();
+            vector<TracerMeshCell*>::iterator cell = (*tracer)->getConnectedCells().begin();
             int i = 0;
             for (; cell != (*tracer)->getConnectedCells().end(); ++cell) {
                 i++;
@@ -420,7 +422,50 @@ void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
     REPORT_NOTICE("Shape function uses " << setw(6) << setprecision(2) << (double)(time2)/CLOCKS_PER_SEC << " seconds.");
 }
 
+struct RemapData {
+    const LADY_LIST<Tracer*> *tracers;
+    sp_mat A;   //>! weight coefficient matrix
+    vec b;      //>! target mass
+    vec e;      //>! error  mass
+    int iterCount = 0;
+};
+
+double calcRemapError(unsigned int n, const double *x_,
+                      double *grad, void *data_) {
+    RemapData *data = static_cast<RemapData*>(data_);
+    double error = 0;
+    vec x(x_, n);
+    data->e = data->A*x-data->b;
+    error = pow(norm(data->e, 2), 2);
+    if (grad != NULL) {
+        int j = 0;
+        LADY_LIST<Tracer*>::const_iterator tracer = data->tracers->begin();
+        for (; tracer != data->tracers->end(); ++tracer) {
+            grad[j] = 0;
+            const vector<TracerMeshCell*> &cells = (*tracer)->getConnectedCells();
+            for (int k = 0; k < (*tracer)->getNumConnectedCell(); ++k) {
+                int i = cells[k]->getID();
+                grad[j] += data->e[i]*data->A(i, j);
+            }
+            grad[j] *= 2;
+            j++;
+        }
+    }
+    cout << "[Notice]: Iteration " << ++data->iterCount;
+    cout << ": Objective function value is " << setw(40) << setprecision(30) << error << endl;
+    return error;
+}
+
 void AdvectionManager::remapMeshToTracers(const TimeLevelIndex<2> &timeIdx) {
+    int m = tracerMeshCells.getMesh().getTotalNumGrid(CENTER);
+    int n = tracerManager.tracers.size();
+    RemapData remapData;
+    vector<double> x(n);
+    remapData.A.set_size(m, n);
+    remapData.b.set_size(m);
+    remapData.e.set_size(m);
+    remapData.tracers = &tracerManager.getTracers();
+    // calculate the initial guess
     LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();
     for (; tracer != tracerManager.tracers.end(); ++tracer) {
         (*tracer)->resetSpeciesMass();
@@ -428,13 +473,84 @@ void AdvectionManager::remapMeshToTracers(const TimeLevelIndex<2> &timeIdx) {
         assert(cells.size() != 0);
         for (int i = 0; i < (*tracer)->getNumConnectedCell(); ++i) {
             double weight = cells[i]->getRemapWeight(*tracer)/
-                            cells[i]->getTotalRemapWeight();
+                cells[i]->getTotalRemapWeight();
+            remapData.A(cells[i]->getID(), (*tracer)->getID()) = weight;
             for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
                 double &m = (*tracer)->getSpeciesMass(s);
                 m += cells[i]->getSpeciesMass(s)*weight;
             }
         }
     }
+    // TEST: Eliminate the remapping discrepency.
+//    std::ofstream file;
+//    file.open("A.dat");
+//    tracer = tracerManager.tracers.begin();
+//    for (; tracer != tracerManager.tracers.end(); ++tracer) {
+//        const vector<TracerMeshCell*> &cells = (*tracer)->getConnectedCells();
+//        for (int i = 0; i < (*tracer)->getNumConnectedCell(); ++i) {
+//            file << setw(8) << cells[i]->getID()+1;
+//            file << setw(8) << (*tracer)->getID()+1;
+//            file << setw(30) << setprecision(20) << remapData.A(cells[i]->getID(),
+//                                                                (*tracer)->getID());
+//            file << endl;
+//        }
+//    }
+//    file.close();
+//    file.open("b.dat");
+//    for (int i = 0; i < tracerMeshCells.getMesh().getTotalNumGrid(CENTER); ++i) {
+//        file << setw(40) << setprecision(20) << tracerMeshCells(timeIdx, i).getSpeciesMass(0) << endl;
+//    }
+//    file.close();
+//    file.open("x0.dat");
+//    tracer = tracerManager.tracers.begin();
+//    for (; tracer != tracerManager.tracers.end(); ++tracer) {
+//        file << setw(40) << setprecision(20) << (*tracer)->getSpeciesMass(0) << endl;
+//    }
+//    file.close();
+//    exit(0);
+//    std::ifstream tmp("x.dat");
+//    tracer = tracerManager.tracers.begin();
+//    for (; tracer != tracerManager.tracers.end(); ++tracer) {
+//        tmp >> (*tracer)->getSpeciesMass(0);
+//    }
+//    tmp.close();
+//    nlopt::opt a(nlopt::LD_MMA, n);
+//    a.set_min_objective(calcRemapError, &remapData);
+//    a.set_ftol_rel(1.0e-12);
+//    a.set_stopval(1.0e-12);
+//    for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+//        double b0 = 1e37, b1 = -1e37;
+//        for (int i = 0; i < m; ++i) {
+//            double b = tracerMeshCells(timeIdx, i).getSpeciesMass(s);
+//            if (b0 > b) b0 = b;
+//            if (b1 < b) b1 = b;
+//        }
+//        double db = b1-b0;
+//        for (int i = 0; i < m; ++i) {
+//            double b = tracerMeshCells(timeIdx, i).getSpeciesMass(s);
+//            remapData.b[i] = (b-b0)/db;
+//        }
+//        int k = 0;
+//        tracer = tracerManager.tracers.begin();
+//        for (; tracer != tracerManager.tracers.end(); ++tracer) {
+//            x[k++] = ((*tracer)->getSpeciesMass(s)-b0)/db;
+//        }
+//        double obj;
+//        nlopt::result res;
+//        try {
+//            res = a.optimize(x, obj);
+//            cout << "Final objective is " << obj << endl;
+//            
+//            int k = 0;
+//            tracer = tracerManager.tracers.begin();
+//            for (; tracer != tracerManager.tracers.end(); ++tracer) {
+//                x[k++] = ((*tracer)->getSpeciesMass(s)-b0)/db;
+//                (*tracer)->getSpeciesMass(s) = x[k++]*db+b0;
+//            }
+//        } catch (const std::exception &e) {
+//            REPORT_ERROR("Encounter exception \"" << e.what() << "\" from NLopt!");
+//        }
+//    }
 }
 
 void AdvectionManager::remapTracersToMesh(const TimeLevelIndex<2> &timeIdx) {

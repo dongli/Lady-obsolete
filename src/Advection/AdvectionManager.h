@@ -7,14 +7,10 @@
 namespace lady {
 
 // shortcuts for MLPACK classes
-#ifdef TEST
-
-#else
 typedef mlpack::tree::BinarySpaceTree<
     mlpack::bound::HRectBound<2>,
     mlpack::range::RangeSearchStat> Tree;
-typedef mlpack::metric::SquaredEuclideanDistance Metric;
-#endif
+typedef mlpack::metric::EuclideanDistance Metric;
 typedef mlpack::range::RangeSearch<Metric, Tree> Searcher;
 
 /**

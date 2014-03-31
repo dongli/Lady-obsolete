@@ -27,26 +27,26 @@ begin
     res_map@mpLimitMode = "Angles"
     res_map@mpCenterLonF = p0(0)
     res_map@mpCenterLatF = p0(1)
-    res_map@mpLeftAngleF = 5.0
-    res_map@mpRightAngleF = 5.0
-    res_map@mpTopAngleF = 5.0
-    res_map@mpBottomAngleF = 5.0
+    res_map@mpLeftAngleF = 3.0
+    res_map@mpRightAngleF = 3.0
+    res_map@mpTopAngleF = 3.0
+    res_map@mpBottomAngleF = 3.0
 
     map = gsn_csm_map(wks, res_map)
 
     res_p0 = True
     res_p0@gsMarkerIndex = 16
-    res_p0@gsMarkerSizeF = 0.002
+    res_p0@gsMarkerSizeF = 0.01
 
     res_ngb = True
     res_ngb@gsMarkerIndex = 16
     res_ngb@gsMarkerColor = "red"
-    res_ngb@gsMarkerSizeF = 0.002
+    res_ngb@gsMarkerSizeF = 0.01
 
     res_c0 = True
     res_c0@gsMarkerIndex = 16
     res_c0@gsMarkerColor = "blue"
-    res_c0@gsMarkerSizeF = 0.002
+    res_c0@gsMarkerSizeF = 0.01
 
     gsn_polymarker(wks, map, p0(0), p0(1), res_p0)
     do i = 0, num_ngb-1

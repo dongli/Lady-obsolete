@@ -21,6 +21,8 @@ public:
     DeformationTestCase(SubCase subCase, InitCond initCond);
     ~DeformationTestCase();
 
+    virtual void init(const geomtk::TimeManager &timeManager);
+
     Time getStartTime() const;
     Time getEndTime() const;
     double getStepSize() const;

@@ -10,15 +10,18 @@ class AdvectionTestCase {
 protected:
     LADY_DOMAIN *domain;
     LADY_MESH *mesh;
+    const geomtk::TimeManager *timeManager;
     LADY_VELOCITY_FIELD velocity;
     vector<LADY_SCALAR_FIELD*> q;
 public:
     AdvectionTestCase();
     virtual ~AdvectionTestCase();
 
-    const LADY_DOMAIN& getDomain() const;
-    const LADY_MESH& getMesh() const;
-    const LADY_VELOCITY_FIELD& getVelocityField() const;
+    virtual void init(const geomtk::TimeManager &timeManager);
+
+    virtual const LADY_DOMAIN& getDomain() const { return *domain; }
+    virtual const LADY_MESH& getMesh() const { return *mesh; }
+    virtual const LADY_VELOCITY_FIELD& getVelocityField() const { return velocity; }
     
     /**
      *  Output velocity field.

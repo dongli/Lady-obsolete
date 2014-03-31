@@ -3,6 +3,20 @@
 namespace lady {
 
 SolidRotationTestCase::SolidRotationTestCase() {
+    REPORT_ONLINE;
+}
+
+SolidRotationTestCase::~SolidRotationTestCase() {
+    delete mesh;
+    delete domain;
+    delete axisPole;
+    delete c0;
+    delete cr0;
+    REPORT_OFFLINE;
+}
+
+void SolidRotationTestCase::init(const geomtk::TimeManager &timeManager) {
+    AdvectionTestCase::init(timeManager);
     // -------------------------------------------------------------------------
     // initialize domain
     domain = new geomtk::SphereDomain(2);
@@ -11,34 +25,8 @@ SolidRotationTestCase::SolidRotationTestCase() {
     // initialize mesh
     mesh = new geomtk::RLLMesh(*domain);
     // Note: Use larger Pole radius to decrease deformation when crossing Poles.
-    mesh->setPoleRadius(30.0*RAD);
-    int numLon = 360;
-    vec fullLon(numLon), halfLon(numLon);
-    double dlon = 2.0*M_PI/numLon;
-    for (int i = 0; i < numLon; ++i) {
-        fullLon[i] = i*dlon;
-        halfLon[i] = i*dlon+dlon*0.5;
-    }
-    mesh->setGridCoords(0, numLon, fullLon, halfLon);
-    int numLat = 181;
-    vec fullLat(numLat), halfLat(numLat-1);
-    // NOTE: Since the velocity interpolation within polar cap is inaccurate in
-    //       deformational flow, we set the second and last second latitude very
-    //       near to Poles by the parameter 'lat0' (distance from Poles).
-    double lat0 = 0.1*RAD;
-    double dlat = (M_PI-lat0*2)/(numLat-2-1);
-    for (int j = 1; j < numLat-1; ++j) {
-        fullLat[j] = (j-1)*dlat-M_PI_2+lat0;
-    }
-    fullLat[0] = -M_PI_2;
-    fullLat[numLat-1] = M_PI_2;
-    for (int j = 1; j < numLat-2; ++j) {
-        halfLat[j] = dlat*0.5+(j-1)*dlat-M_PI_2+lat0;
-    }
-    halfLat[0] = -M_PI_2+lat0*0.5;
-    halfLat[numLat-2] = M_PI_2-lat0*0.5;
-    mesh->setGridCoords(1, numLat, fullLat, halfLat);
-    mesh->setCellVolumes();
+    mesh->setPoleRadius(18.0*RAD);
+    mesh->init(360, 181);
     // -------------------------------------------------------------------------
     // initialize velocity
     velocity.create(*mesh, true, HAS_HALF_LEVEL);
@@ -53,21 +41,10 @@ SolidRotationTestCase::SolidRotationTestCase() {
     c0 = new LADY_SPACE_COORD(2);
     cr0 = new LADY_SPACE_COORD(2);
     axisPole->setCoord(M_PI,  M_PI_2-alpha);
-    c0->setCoord(M_PI_2, 0.0);
+    c0->setCoord(M_PI_2, M_PI_2);
     domain->rotate(*axisPole, *c0, *cr0);
     R = domain->getRadius()/3;
     H0 = 1000;
-    // -------------------------------------------------------------------------
-    REPORT_ONLINE;
-}
-
-SolidRotationTestCase::~SolidRotationTestCase() {
-    delete mesh;
-    delete domain;
-    delete axisPole;
-    delete c0;
-    delete cr0;
-    REPORT_OFFLINE;
 }
 
 Time SolidRotationTestCase::getStartTime() const {
@@ -77,11 +54,11 @@ Time SolidRotationTestCase::getStartTime() const {
 
 Time SolidRotationTestCase::getEndTime() const {
     Time time;
-    return time+12*86400;
+    return time+12*TimeUnit::DAYS;
 }
 
 double SolidRotationTestCase::getStepSize() const {
-    return 30*60;
+    return 30*TimeUnit::MINUTES;
 }
 
 void SolidRotationTestCase::advance(double time,
@@ -127,7 +104,7 @@ void SolidRotationTestCase::calcSolution(double time,
 void SolidRotationTestCase::calcSolution(double time,
                                          const TimeLevelIndex<2> &timeIdx,
                                          LADY_SCALAR_FIELD &q) {
-    cr0->setCoordComp(0, angleSpeed*time);
+    cr0->setCoordComp(0, (*cr0)(0)+angleSpeed*time);
     domain->rotateBack(*axisPole, *c0, *cr0);
     for (int j = 0; j < mesh->getNumGrid(1, FULL); ++j) {
         for (int i = 0; i < mesh->getNumGrid(0, FULL); ++i) {

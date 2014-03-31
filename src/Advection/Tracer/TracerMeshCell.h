@@ -8,6 +8,7 @@ namespace lady {
 
 class TracerMeshCell {
 protected:
+    int ID;
     LADY_SPACE_COORD *x; //>! center grid coordinate
     double volume; //>! cell volume for converting density and mass
     vector<double> m; //>! species mass array
@@ -19,6 +20,10 @@ protected:
 public:
     TracerMeshCell();
     ~TracerMeshCell();
+
+    void setID(int ID) { this->ID = ID; }
+    
+    int getID() const { return ID; }
 
     /**
      *  Set the center coordinate.
@@ -64,6 +69,10 @@ public:
     void resetSpeciesMass();
 
     void connect(Tracer *tracer, double weight);
+    
+    int getNumConnectedTracer() { return numConnectedTracer; }
+    
+    vector<Tracer*>& getConnectedTracers() { return connectedTracers; }
 
     double getRemapWeight(Tracer *tracer) const;
 

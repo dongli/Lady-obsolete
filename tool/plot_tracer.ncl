@@ -7,7 +7,7 @@ begin
     start_time = 0
     end_time = 0
     time_step = 1
-    file_prefix = "tracers.solid_rotation.true_solution"
+    file_prefix = "tracers.barotropic.80x40"
 
     PI = atan(1.0)*4
     RAD = PI/180
@@ -28,7 +28,7 @@ begin
 
     wks = gsn_open_wks("pdf", file_prefix+".tracers")
 
-    point_size = 0.005
+    point_size = 0.002
 
     res_map = True
     res_map@gsnFrame = False
@@ -50,14 +50,14 @@ begin
     res_s2@gsMarkerSizeF = point_size
     res_s2@gsLineColor = "red"
 
-    ;check = ispan(0, num_tracer-1, 100)
-    ;check = (/5000/)
+    check = ispan(10, 3200, 80)
+    ; check = (/1963/)
 
     do l = 0, num_time-1, 1
         system("echo time step: "+l)
         f = addfile(fs(l), "r")
-        ;res_map@gsnPolar = "SH"
-        ;res_map@mpMaxLatF = -0.0
+        ; res_map@gsnPolar = "NH"
+        ; res_map@mpMinLatF = 60
         ; if (isdefined("check")) then
         ;     res_map@mpProjection = "Satellite"
         ;     res_map@mpCenterLonF = f->c(check(0),0)/RAD
@@ -86,9 +86,9 @@ begin
         end if
         do k = 0, dimsizes(check)-1
             i = check(k)
-            ;if (f->m(i,0) .lt. 0.0001) then
-            ;    continue
-            ;end if
+            if (f->m(i,0) .lt. 0.0001) then
+                continue
+            end if
             do j = 0, 3
                 s = f->s1(i,j,:)/RAD
                 gsn_polymarker(wks, map, s(0), s(1), res_s1)
