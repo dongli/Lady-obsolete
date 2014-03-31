@@ -19,12 +19,21 @@ AdvectionManager::~AdvectionManager() {
 
 void AdvectionManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
                             int numParcelX, int numParcelY) {
+    TimeLevelIndex<2> initTimeIdx;
+    assert(initTimeIdx.get() == 0);
+    // -------------------------------------------------------------------------
+    // initialize tracer manager
     tracerManager.init(domain, mesh, numParcelX, numParcelY);
+    // -------------------------------------------------------------------------
+    // initialize shape function (or kernel function)
     ShapeFunction::init(domain);
+    // -------------------------------------------------------------------------
+    // initialize regrid object
     if (regrid == NULL) {
         regrid = new LADY_REGRID(mesh);
     }
-    TimeLevelIndex<2> initTimeIdx;
+    // -------------------------------------------------------------------------
+    // initialize tracer mesh cells
     tracerMeshCells.create("", "", "mesh cells for storing tracers", mesh, CENTER);
     for (int i = 0; i < mesh.getTotalNumGrid(CENTER); ++i) {
         LADY_SPACE_COORD x(domain.getNumDim());
@@ -37,13 +46,15 @@ void AdvectionManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
             tracerMeshCells(initTimeIdx+l, i).setID(i);
         }
     }
+    // -------------------------------------------------------------------------
+    // initialize tree structure of mesh grids
     cellCoords.reshape(3, mesh.getTotalNumGrid(CENTER));
     for (int i = 0; i < mesh.getTotalNumGrid(CENTER); ++i) {
         cellCoords.col(i) = tracerMeshCells(initTimeIdx, i).getCoord().getCartCoord();
     }
     cellTree = new Tree(cellCoords, cellCoordsMap);
     cellCoords = cellTree->Dataset();
-    assert(initTimeIdx.get() == 0);
+    // -------------------------------------------------------------------------
     connectTracersAndMesh(initTimeIdx);
 }
 
@@ -52,6 +63,7 @@ void AdvectionManager::registerTracer(const string &name, const string &units,
     tracerManager.registerTracer(name, units, brief);
     TimeLevelIndex<2> initTimeIdx;
     for (int l = 0; l < 2; ++l) {
+        totalMass.getLevel(l).push_back(0);
         for (int i = 0; i < tracerMeshCells.getMesh().getTotalNumGrid(CENTER); ++i) {
             tracerMeshCells(initTimeIdx+l, i).addSpecies();
         }
@@ -60,10 +72,11 @@ void AdvectionManager::registerTracer(const string &name, const string &units,
 
 void AdvectionManager::input(const TimeLevelIndex<2> &timeIdx,
                              vector<LADY_SCALAR_FIELD*> &q) {
+    assert(timeIdx.isCurrentIndex());
     assert(q.size() == tracerManager.getNumSpecies());
     const LADY_MESH &mesh = static_cast<const LADY_MESH&>(tracerMeshCells.getMesh());
     // -------------------------------------------------------------------------
-    // transfer the input tracer density field into internal tracer mass field
+    // copy the input tracer density onto internal mesh grids
     for (int s = 0; s < q.size(); ++s) {
 #ifdef DEBUG
         assert(q[s]->getMesh().getTotalNumGrid(CENTER) ==
@@ -73,6 +86,7 @@ void AdvectionManager::input(const TimeLevelIndex<2> &timeIdx,
             double &rho = tracerMeshCells(timeIdx, i).getSpeciesDensity(s);
             rho = (*q[s])(timeIdx, i);
         }
+        calcTotalMass(timeIdx);
     }
     // -------------------------------------------------------------------------
     // transfer the tracer mass from cells to tracers
@@ -168,18 +182,15 @@ void AdvectionManager::output(const string &fileName,
     delete [] x;
     nc_close(ncId);
 }
-    
+
 void AdvectionManager::diagnose(const TimeLevelIndex<2> &timeIdx) {
+    calcTotalMass(timeIdx);
     // print total mass for each species
     for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
-        double totalMass = 0.0;
-        for (int i = 0; i < tracerMeshCells.getMesh().getTotalNumGrid(CENTER); ++i) {
-            totalMass += tracerMeshCells(timeIdx, i).getSpeciesDensity(s)*
-                         tracerMeshCells(timeIdx, i).getVolume();
-        }
-        REPORT_NOTICE("Total mass of " <<
-                      tracerManager.getSpeciesInfo(s).getName() << " is " <<
-                      setw(30) << setprecision(20) << totalMass << ".");
+        REPORT_NOTICE("Total mass of \"" <<
+                      tracerManager.getSpeciesInfo(s).getName() << "\" is " <<
+                      setw(30) << setprecision(20) <<
+                      totalMass.getLevel(timeIdx)[s] << ".");
     }
 }
 
@@ -207,6 +218,18 @@ void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
 
 // -----------------------------------------------------------------------------
 // private member functions
+
+void AdvectionManager::calcTotalMass(const TimeLevelIndex<2> &timeIdx) {
+    // print total mass for each species
+    for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+        totalMass.getLevel(timeIdx)[s] = 0;
+        for (int i = 0; i < tracerMeshCells.getMesh().getTotalNumGrid(CENTER); ++i) {
+            totalMass.getLevel(timeIdx)[s] +=
+                tracerMeshCells(timeIdx, i).getSpeciesDensity(s)*
+                tracerMeshCells(timeIdx, i).getVolume();
+        }
+    }
+}
 
 /*
     Trajectory equation:
@@ -453,6 +476,28 @@ void AdvectionManager::remapTracersToMesh(const TimeLevelIndex<2> &timeIdx) {
             }
         }
     }
+    correctTotalMassOnMesh(timeIdx);
+}
+
+void AdvectionManager::correctTotalMassOnMesh(const TimeLevelIndex<2> &timeIdx) {
+    double expectedTotalMass[tracerManager.getNumSpecies()];
+    if (timeIdx.isCurrentIndex()) {
+        for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+            expectedTotalMass[s] = totalMass.getLevel(timeIdx)[s];
+        }
+    } else {
+        for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+            expectedTotalMass[s] = totalMass.getLevel(timeIdx-1)[s];
+        }
+    }
+    calcTotalMass(timeIdx);
+    for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+        double fixer = expectedTotalMass[s]/totalMass.getLevel(timeIdx)[s];
+        for (int i = 0; i < tracerMeshCells.getMesh().getTotalNumGrid(CENTER); ++i) {
+            tracerMeshCells(timeIdx, i).getSpeciesDensity(s) *= fixer;
+        }
+    }
+    calcTotalMass(timeIdx);
 }
 
 }

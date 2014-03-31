@@ -20,7 +20,8 @@ class AdvectionManager {
 protected:
     TracerManager tracerManager;
     LADY_FIELD<TracerMeshCell> tracerMeshCells;
-    LADY_REGRID *regrid; //>! used to interpolate velocity onto tracers
+    LADY_REGRID *regrid;                        //>! used to interpolate velocity onto tracers
+    TimeLevels<vector<double>, 2> totalMass;    //>! tracer species total mass array
 private:
     // range search parameters
     Tree *cellTree;                 //>! tree data structure for mesh cells for
@@ -86,6 +87,14 @@ public:
                  const LADY_VELOCITY_FIELD &V);
 private:
     /**
+     *  Calculate the total mass of every tracer species, and store the results
+     *  into tracerMeshCells.
+     *
+     *  @param timeIdx the time level index.
+     */
+    void calcTotalMass(const TimeLevelIndex<2> &timeIdx);
+
+    /**
      *  Integrate the advection equations by using 4th-order Runge-Kutta method.
      *
      *  @param dt         the time step size.
@@ -116,6 +125,8 @@ private:
      *  @param timeIdx the time level index.
      */
     void remapTracersToMesh(const TimeLevelIndex<2> &timeIdx);
+
+    void correctTotalMassOnMesh(const TimeLevelIndex<2> &timeIdx);
 };
 }
 
