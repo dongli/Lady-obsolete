@@ -265,7 +265,13 @@ void AdvectionManager::integrate_RK4(double dt,
                 LADY_VELOCITY v3(domain.getNumDim());
                 LADY_VELOCITY v4(domain.getNumDim());
                 LADY_VELOCITY v(domain.getNumDim());
-                // -----------------------------------------------------------------
+                const LADY_VELOCITY_FIELD::FieldType &divergence = velocity.getDivergence();
+                double div;
+                double k1_rho[tracerManager.getNumSpecies()];
+                double k2_rho[tracerManager.getNumSpecies()];
+                double k3_rho[tracerManager.getNumSpecies()];
+                double k4_rho[tracerManager.getNumSpecies()];
+                // -------------------------------------------------------------
                 // update location and deformation matrix of tracer
                 LADY_SPACE_COORD &x0 = (*tracer)->getX(oldTimeIdx);
                 LADY_SPACE_COORD &x1 = (*tracer)->getX(newTimeIdx);
@@ -281,21 +287,39 @@ void AdvectionManager::integrate_RK4(double dt,
                     idx0.setMoveOnPole(false);
                     idx1.setMoveOnPole(false);
                 }
-                regrid->run(BILINEAR, oldTimeIdx, velocity, x0, v1, &idx0);
                 // =============================================================
                 // stage 1
+                regrid->run(BILINEAR, oldTimeIdx, velocity, x0, v1, &idx0);
+                regrid->run(BILINEAR, oldTimeIdx, divergence, x0, div, &idx0);
+                for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+                    k1_rho[s] = -(*tracer)->getSpeciesDensity(s)*div;
+                }
                 mesh.move(x0, dt05, v1, idx0, x1); idx1.locate(mesh, x1);
-                regrid->run(BILINEAR, halfTimeIdx, velocity, x1, v2, &idx1);
                 // =============================================================
                 // stage 2
+                regrid->run(BILINEAR, halfTimeIdx, velocity, x1, v2, &idx1);
+                regrid->run(BILINEAR, halfTimeIdx, divergence, x1, div, &idx1);
+                for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+                    k2_rho[s] = -(*tracer)->getSpeciesDensity(s)*div;
+                }
                 mesh.move(x0, dt05, v2, idx0, x1); idx1.locate(mesh, x1);
-                regrid->run(BILINEAR, halfTimeIdx, velocity, x1, v3, &idx1);
                 // =============================================================
                 // stage 3
+                regrid->run(BILINEAR, halfTimeIdx, velocity, x1, v3, &idx1);
+                regrid->run(BILINEAR, newTimeIdx, divergence, x1, div, &idx1);
+                for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+                    k3_rho[s] = -(*tracer)->getSpeciesDensity(s)*div;
+                }
                 mesh.move(x0, dt, v3, idx0, x1); idx1.locate(mesh, x1);
-                regrid->run(BILINEAR, newTimeIdx, velocity, x1, v4, &idx1);
                 // =============================================================
                 // stage 4
+                regrid->run(BILINEAR, newTimeIdx, velocity, x1, v4, &idx1);
+                regrid->run(BILINEAR, newTimeIdx, divergence, x1, div, &idx1);
+                for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+                    k4_rho[s] = -(*tracer)->getSpeciesDensity(s)*div;
+                    (*tracer)->getSpeciesDensity(s) += dt*
+                        (k1_rho[s]+2*k2_rho[s]+2*k3_rho[s]+k4_rho[s])/6;
+                }
                 v = (v1+v2*2.0+v3*2.0+v4)/6.0;
                 mesh.move(x0, dt, v, idx0, x1); idx1.locate(mesh, x1);
                 x1.transformToCart(domain);
@@ -315,24 +339,24 @@ void AdvectionManager::integrate_RK4(double dt,
                         idx0s[i]->setMoveOnPole(false);
                         idx1s[i]->setMoveOnPole(false);
                     }
-                    regrid->run(BILINEAR, oldTimeIdx, velocity, *x0s[i], v1, idx0s[i]);
                     // =========================================================
                     // stage 1
+                    regrid->run(BILINEAR, oldTimeIdx, velocity, *x0s[i], v1, idx0s[i]);
                     mesh.move(*x0s[i], dt05, v1, *idx0s[i], *x1s[i]);
                     idx1s[i]->locate(mesh, *x1s[i]);
-                    regrid->run(BILINEAR, halfTimeIdx, velocity, *x1s[i], v2, idx1s[i]);
                     // =========================================================
                     // stage 2
+                    regrid->run(BILINEAR, halfTimeIdx, velocity, *x1s[i], v2, idx1s[i]);
                     mesh.move(*x0s[i], dt05, v2, *idx0s[i], *x1s[i]);
                     idx1s[i]->locate(mesh, *x1s[i]);
-                    regrid->run(BILINEAR, halfTimeIdx, velocity, *x1s[i], v3, idx1s[i]);
                     // =========================================================
                     // stage 3
+                    regrid->run(BILINEAR, halfTimeIdx, velocity, *x1s[i], v3, idx1s[i]);
                     mesh.move(*x0s[i], dt, v3, *idx0s[i], *x1s[i]);
                     idx1s[i]->locate(mesh, *x1s[i]);
-                    regrid->run(BILINEAR, newTimeIdx, velocity, *x1s[i], v4, idx1s[i]);
                     // =========================================================
                     // stage 4
+                    regrid->run(BILINEAR, newTimeIdx, velocity, *x1s[i], v4, idx1s[i]);
                     v = (v1+v2*2.0+v3*2.0+v4)/6.0;
                     mesh.move(*x0s[i], dt, v, *idx0s[i], *x1s[i]);
                     idx1s[i]->locate(mesh, *x1s[i]);
@@ -340,7 +364,6 @@ void AdvectionManager::integrate_RK4(double dt,
                 }
                 // -------------------------------------------------------------
                 (*tracer)->updateDeformMatrix(domain, mesh, newTimeIdx);
-//                (*tracer)->selfInspect(domain, newTimeIdx);
             }
         }
     }

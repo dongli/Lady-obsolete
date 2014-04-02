@@ -1,8 +1,8 @@
 #include "lady.h"
 
 #define USE_DEFORMATION_TEST_CASE 0
-#define USE_SOLID_ROTATION_TEST_CASE 1
-#define USE_BAROTROPIC_TEST_CASE 0
+#define USE_SOLID_ROTATION_TEST_CASE 0
+#define USE_BAROTROPIC_TEST_CASE 1
 #define CALCULATE_SOLUTION 0
 
 int main(int argc, const char *argv[])
