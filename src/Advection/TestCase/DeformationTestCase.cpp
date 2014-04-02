@@ -5,6 +5,7 @@ namespace lady {
 DeformationTestCase::DeformationTestCase(SubCase subCase, InitCond initCond) {
     this->subCase = subCase;
     this->initCond = initCond;
+    period = 5.0;
     REPORT_ONLINE;
 }
 
@@ -16,11 +17,10 @@ DeformationTestCase::~DeformationTestCase() {
 
 void DeformationTestCase::init(const geomtk::TimeManager &timeManager) {
     AdvectionTestCase::init(timeManager);
-    period = 5.0;
     // -------------------------------------------------------------------------
     // initialize domain
     domain = new geomtk::SphereDomain(2);
-    domain->setRadius(1.0);
+    domain->setRadius(18.0);
     // -------------------------------------------------------------------------
     // initialize mesh
     mesh = new geomtk::RLLMesh(*domain);

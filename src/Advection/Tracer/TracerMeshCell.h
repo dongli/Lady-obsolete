@@ -91,7 +91,7 @@ public:
 
     void connect(Tracer *tracer, double weight);
     
-    int getNumConnectedTracer() { return numConnectedTracer; }
+    int getNumConnectedTracer() const { return numConnectedTracer; }
     
     vector<Tracer*>& getConnectedTracers() { return connectedTracers; }
 
