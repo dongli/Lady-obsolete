@@ -24,8 +24,6 @@ void SolidRotationTestCase::init(const geomtk::TimeManager &timeManager) {
     // -------------------------------------------------------------------------
     // initialize mesh
     mesh = new geomtk::RLLMesh(*domain);
-    // Note: Use larger Pole radius to decrease deformation when crossing Poles.
-    mesh->setPoleRadius(18.0*RAD);
     mesh->init(360, 181);
     // -------------------------------------------------------------------------
     // initialize velocity

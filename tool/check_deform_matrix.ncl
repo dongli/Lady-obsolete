@@ -80,7 +80,7 @@ begin
 
     load "../build/Debug/deform_matrix.dat"
 
-    wks = gsn_open_wks("x11", "deform_matrix")
+    wks = gsn_open_wks("pdf", "deform_matrix")
 
     plot_deform_matrix(wks, H, xs)
 

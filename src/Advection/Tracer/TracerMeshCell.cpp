@@ -5,6 +5,7 @@ namespace lady {
 TracerMeshCell::TracerMeshCell() {
     x = NULL;
     numConnectedTracer = 0;
+    numContainedTracer = 0;
 }
 
 TracerMeshCell::~TracerMeshCell() {
@@ -49,5 +50,28 @@ double TracerMeshCell::getRemapWeight(Tracer *tracer) const {
     }
     REPORT_ERROR("Tracer is not connected!");
 }
+
+void TracerMeshCell::resetContainedTracers() {
+    numContainedTracer = 0;
+}
+
+void TracerMeshCell::contain(Tracer *tracer) {
+#ifdef DEBUG
+    for (int i = 0; i < numContainedTracer; ++i) {
+        if (containedTracers[i] == tracer) {
+            REPORT_ERROR("Tracer (ID = " << tracer->getID() <<
+                         ") has already been contained!");
+        }
+    }
+#endif
+    if (numContainedTracer == containedTracers.size()) {
+        containedTracers.push_back(tracer);
+    } else {
+        containedTracers[numContainedTracer] = tracer;
+    }
+    tracer->setHostCell(this);
+    numContainedTracer++;
+}
+
 
 }

@@ -14,16 +14,26 @@ class TracerMeshCell;
  *  field. It derives from parcel.
  */
 class Tracer : public Parcel {
+public:
+    enum BadDeformMatrixType {
+        GOOD_SHAPE, POOR_LINEAR_APPROXIMATION, EXTREME_FILAMENTATION
+    };
 protected:
     vector<double> density; //>! species density array
     TracerSkeleton *skeleton;
-
+    BadDeformMatrixType badType;
     /**
      *  Remapping parameters
      */
     int numConnectedCell;
     vector<TracerMeshCell*> connectedCells;
     double totalRemapWeight;
+    /**
+     *  Mixing parameters
+     */
+    mat U, V;
+    vec s;
+    TracerMeshCell *hostCell;
 public:
     Tracer(int numDim);
     virtual ~Tracer();
@@ -78,6 +88,8 @@ public:
      *  @return The skeleton object.
      */
     TracerSkeleton& getSkeleton() { return *skeleton; }
+    
+    BadDeformMatrixType getBadType() const { return badType; }
 
     /**
      *  Reset the connected cells to empty for later updating.
@@ -106,6 +118,8 @@ public:
         return totalRemapWeight;
     }
 
+    void setHostCell(TracerMeshCell *cell) { hostCell = cell; }
+
     /**
      *  Update deformation matrix from tracer skeleton.
      *
@@ -115,15 +129,19 @@ public:
     void updateDeformMatrix(const LADY_DOMAIN &domain,
                             const LADY_MESH &mesh,
                             const TimeLevelIndex<2> &timeIdx);
-    
-    /**
-     *  Check the linear deformation transformation validity.
-     *
-     *  @param domain  the domain.
-     *  @param timeIdx the time level index.
-     */
-    void selfInspect(const LADY_DOMAIN &domain,
-                     const TimeLevelIndex<2> &timeIdx);
+
+    void mixWithNeighborTracers(const TimeLevelIndex<2> &timeIdx,
+                                const LADY_DOMAIN &domain);
+
+    void adjustDeformMatrix(const TimeLevelIndex<2> &timeIdx);
+
+    void resetSkeleton(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
+                       const TimeLevelIndex<2> &timeIdx);
+
+#ifdef DEBUG
+    void outputNeighbors(const TimeLevelIndex<2> &timeIdx,
+                         const LADY_DOMAIN &domain);
+#endif
 };
 
 }

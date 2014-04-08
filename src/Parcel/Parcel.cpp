@@ -34,26 +34,6 @@ Parcel& Parcel::operator=(const Parcel &other) {
     }
     return *this;
 }
-
-int Parcel::getID() const {
-    return ID;
-}
-
-void Parcel::setID(int ID) {
-    this->ID = ID;
-}
-
-LADY_SPACE_COORD& Parcel::getX(const TimeLevelIndex<2> &timeIdx) {
-    return *(q.getLevel(timeIdx));
-}
-
-LADY_MATRIX& Parcel::getH(const TimeLevelIndex<2> &timeIdx) {
-    return *(H.getLevel(timeIdx));
-}
-    
-LADY_MATRIX& Parcel::getInvH(const TimeLevelIndex<2> &timeIdx) {
-    return *(invH.getLevel(timeIdx));
-}
     
 void Parcel::getSpaceCoord(const LADY_DOMAIN &domain,
                            const TimeLevelIndex<2> &timeIdx,
@@ -107,10 +87,6 @@ void Parcel::updateShapeSize(const LADY_DOMAIN &domain,
     } else {
         REPORT_ERROR("Under construction!");
     }
-}
-
-const vec::fixed<2>& Parcel::getShapeSize(const TimeLevelIndex<2> &timeIdx) const {
-    return shapeSize.getLevel(timeIdx);
 }
 
 }

@@ -5,9 +5,9 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 begin
 
     start_time = 0
-    end_time = 0
+    end_time = 100
     time_step = 1
-    file_prefix = "tracers.barotropic.80x40"
+    file_prefix = "tracers.deform.240x120"
 
     PI = atan(1.0)*4
     RAD = PI/180
@@ -50,14 +50,14 @@ begin
     res_s2@gsMarkerSizeF = point_size
     res_s2@gsLineColor = "red"
 
-    check = ispan(10, 3200, 80)
-    ; check = (/1963/)
+    ; check = ispan(10000, 10240, 10)
+    check = (/28565/)
 
-    do l = 0, num_time-1, 1
-        system("echo time step: "+l)
+    do l = 0, num_time-1, 2
+        system("echo file: "+fs(l))
         f = addfile(fs(l), "r")
-        ; res_map@gsnPolar = "NH"
-        ; res_map@mpMinLatF = 60
+        res_map@gsnPolar = "NH"
+        res_map@mpMinLatF = 70
         ; if (isdefined("check")) then
         ;     res_map@mpProjection = "Satellite"
         ;     res_map@mpCenterLonF = f->c(check(0),0)/RAD
@@ -70,7 +70,7 @@ begin
         ; end if
         map = gsn_csm_map(wks, res_map)
         ; tracer centroid
-        do i = 0, num_tracer-1, 1
+        do i = 0, num_tracer-1, 5
             c = (/f->c(i,0),f->c(i,1)/)/RAD
             if (isdefined("check") .and. any(check .eq. i)) then
                 res_tracer@gsMarkerColor = "blue"
@@ -86,9 +86,6 @@ begin
         end if
         do k = 0, dimsizes(check)-1
             i = check(k)
-            if (f->m(i,0) .lt. 0.0001) then
-                continue
-            end if
             do j = 0, 3
                 s = f->s1(i,j,:)/RAD
                 gsn_polymarker(wks, map, s(0), s(1), res_s1)

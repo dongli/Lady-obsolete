@@ -18,6 +18,8 @@ typedef mlpack::range::RangeSearch<Metric, Tree> Searcher;
  */
 class AdvectionManager {
 protected:
+    const LADY_DOMAIN *domain;
+    const LADY_MESH *mesh;
     TracerManager tracerManager;
     LADY_FIELD<TracerMeshCell> tracerMeshCells;
     LADY_REGRID *regrid;                        //>! used to interpolate velocity onto tracers
@@ -104,6 +106,8 @@ private:
     void integrate_RK4(double dt, const TimeLevelIndex<2> &oldTimeIdx,
                        const LADY_VELOCITY_FIELD &V);
 
+    void embedTracersIntoMesh(const TimeLevelIndex<2> &timeIdx);
+
     /**
      *  Prepare the bidirectional remapping between tracers and mesh. Find out
      *  the mesh cells that a tracer will affected and calculate the weights.
@@ -111,6 +115,8 @@ private:
      *  @param timeIdx the time level index.
      */
     void connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx);
+
+    void mixTracersIfNecessary(const TimeLevelIndex<2> &timeIdx);
 
     /**
      *  Remap the tracer mass from mesh cells to tracers.

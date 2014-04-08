@@ -17,6 +17,9 @@ protected:
     vector<Tracer*> connectedTracers;
     vector<double> remapWeights;
     double totalRemapWeight;
+    // mixing parameters
+    int numContainedTracer;
+    vector<Tracer*> containedTracers;
 public:
     TracerMeshCell();
     ~TracerMeshCell();
@@ -98,6 +101,14 @@ public:
     double getRemapWeight(Tracer *tracer) const;
 
     double getTotalRemapWeight() const { return totalRemapWeight; }
+
+    void resetContainedTracers();
+
+    void contain(Tracer *tracer);
+
+    int getNumContainedTracer() const { return numContainedTracer; }
+
+    vector<Tracer*>& getContainedTracers() { return containedTracers; }
 };
 
 }

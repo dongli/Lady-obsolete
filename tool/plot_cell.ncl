@@ -5,7 +5,7 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 begin
 
     start_time = 0
-    end_time = 0
+    end_time = 101
     time_step = 1
     file_prefix = "tracers.barotropic.80x40"
 
@@ -24,12 +24,13 @@ begin
     ;res@gsnMaximize = True
     res@cnLinesOn = False
     res@cnFillOn = True
-    res@cnFillMode = "RasterFill"
+    ; res@cnFillMode = "RasterFill"
     res@gsnSpreadColors = True
     res@cnLevelSelectionMode = "ManualLevels"
-    res@cnMinLevelValF = 78000
+    res@cnMinLevelValF = 70000
     res@cnMaxLevelValF = 88000
     res@cnLevelSpacingF = 500.0
+    ; res@cnMinLevelValF = 0.0
     ; res@cnMaxLevelValF = 1000.0
     ; res@cnLevelSpacingF = 50.0
     ; res@cnMaxLevelValF = 1.1
@@ -42,7 +43,7 @@ begin
     res@mpCenterLonF = 180.0
 
     do l = 0, num_time-1
-        system("echo time step: "+l)
+        system("echo file: "+fs(l))
         f = addfile(fs(l), "r")
         num_lat = dimsizes(f->lat)
         q = f->q0

@@ -28,14 +28,14 @@ public:
      *
      *  @param ID the given ID.
      */
-    virtual void setID(int ID);
+    virtual void setID(int ID) { this->ID = ID; }
 
     /**
      *  Get the ID of tracer.
      *
      *  @return The ID.
      */
-    virtual int getID() const;
+    virtual int getID() const { return ID; }
 
     /**
      *  Get the spatial coordinate of tracer.
@@ -44,7 +44,9 @@ public:
      *
      *  @return The spatial coordinate.
      */
-    LADY_SPACE_COORD& getX(const TimeLevelIndex<2> &timeIdx);
+    LADY_SPACE_COORD& getX(const TimeLevelIndex<2> &timeIdx) {
+        return *(q.getLevel(timeIdx));
+    }
 
     /**
      *  Get the deformation matrix of tracer.
@@ -53,7 +55,13 @@ public:
      *
      *  @return The deformation matrix.
      */
-    LADY_MATRIX& getH(const TimeLevelIndex<2> &timeIdx);
+    LADY_MATRIX& getH(const TimeLevelIndex<2> &timeIdx) {
+        return *(H.getLevel(timeIdx));
+    }
+
+    double getDetH(const TimeLevelIndex<2> &timeIdx) const {
+        return detH.getLevel(timeIdx);
+    }
 
     /**
      *  Get the inverse deformation matrix of tracer.
@@ -62,7 +70,9 @@ public:
      *
      *  @return The inverse deformation matrix.
      */
-    LADY_MATRIX& getInvH(const TimeLevelIndex<2> &timeIdx);
+    LADY_MATRIX& getInvH(const TimeLevelIndex<2> &timeIdx) {
+        return *(invH.getLevel(timeIdx));
+    }
 
     /**
      *  Transform body coordinate into spatial coordinate.
@@ -102,7 +112,9 @@ public:
     void updateShapeSize(const LADY_DOMAIN &domain,
                          const TimeLevelIndex<2> &timeIdx);
 
-    const vec::fixed<2>& getShapeSize(const TimeLevelIndex<2> &timeIdx) const;
+    const vec::fixed<2>& getShapeSize(const TimeLevelIndex<2> &timeIdx) const {
+        return shapeSize.getLevel(timeIdx);
+    }
 };
 
 }

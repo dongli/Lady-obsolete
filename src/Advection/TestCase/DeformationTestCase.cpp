@@ -20,7 +20,7 @@ void DeformationTestCase::init(const geomtk::TimeManager &timeManager) {
     // -------------------------------------------------------------------------
     // initialize domain
     domain = new geomtk::SphereDomain(2);
-    domain->setRadius(18.0);
+    domain->setRadius(1.0);
     // -------------------------------------------------------------------------
     // initialize mesh
     mesh = new geomtk::RLLMesh(*domain);

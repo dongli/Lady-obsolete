@@ -13,7 +13,7 @@ int main(int argc, const char *argv[])
     geomtk::StampString o1("tracers.deform.80x40.", ".nc");
 #elif USE_SOLID_ROTATION_TEST_CASE == 1
     lady::SolidRotationTestCase testCase;
-    geomtk::StampString o1("tracers.solid-rotation.80x40.", ".nc");
+    geomtk::StampString o1("tracers.rotation.80x40.", ".nc");
 #elif USE_BAROTROPIC_TEST_CASE == 1
     lady::BarotropicTestCase testCase;
     geomtk::StampString o1("tracers.barotropic.80x40.", ".nc");
