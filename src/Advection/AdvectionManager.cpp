@@ -449,12 +449,12 @@ void AdvectionManager::mixTracersIfNecessary(const TimeLevelIndex<2> &timeIdx) {
     LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();
     for (; tracer != tracerManager.tracers.end(); ++tracer) {
         if ((*tracer)->getBadType() != Tracer::GOOD_SHAPE) {
-//            (*tracer)->mixWithNeighborTracers(timeIdx, *domain);
-            if ((*tracer)->getBadType() == Tracer::EXTREME_FILAMENTATION) {
 #ifdef DEBUG
-                (*tracer)->outputNeighbors(timeIdx, *domain);
-                CHECK_POINT
+            (*tracer)->outputNeighbors(timeIdx, *domain);
+            CHECK_POINT
 #endif
+            (*tracer)->mixWithNeighborTracers(timeIdx, *domain);
+            if ((*tracer)->getBadType() == Tracer::EXTREME_FILAMENTATION) {
                 (*tracer)->adjustDeformMatrix(timeIdx);
             }
             (*tracer)->resetSkeleton(*domain, *mesh, timeIdx);

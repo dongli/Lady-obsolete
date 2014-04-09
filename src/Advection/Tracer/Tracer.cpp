@@ -134,6 +134,7 @@ void Tracer::updateDeformMatrix(const LADY_DOMAIN &domain,
 
 void Tracer::mixWithNeighborTracers(const TimeLevelIndex<2> &timeIdx,
                                     const LADY_DOMAIN &domain) {
+    // collect the neighbor tracers (include this tracer)
     vector<Tracer*> tracers;
     for (int i = 0; i < numConnectedCell; ++i) {
         TracerMeshCell *cell = connectedCells[i];
@@ -151,18 +152,20 @@ void Tracer::mixWithNeighborTracers(const TimeLevelIndex<2> &timeIdx,
         }
         for (int j = 0; j < tracers.size(); ++j) {
             tracers[i]->getBodyCoord(domain, timeIdx, tracers[j]->getX(timeIdx), y);
-            weights[j] = tracers[i]->getShapeFunction(timeIdx, y);
+            // TODO: We should introduce a parameter to control the mixing degree.
+            weights[j] = pow(tracers[i]->getShapeFunction(timeIdx, y), 5);
         }
         weights = weights/sum(weights);
         for (int j = 0; j < tracers.size(); ++j) {
             for (int s = 0; s < density.size(); ++s) {
-                newDensity(s, i) += tracers[j]->density[s]*weights[j];
+                newDensity(s, i) += tracers[j]->density[s]*tracers[j]->getDetH(timeIdx)*weights[j];
             }
         }
     }
+    // copy new density
     for (int i = 0; i < tracers.size(); ++i) {
         for (int s = 0; s < density.size(); ++s) {
-            tracers[i]->density[s] = newDensity(s, i);
+            tracers[i]->density[s] = newDensity(s, i)/tracers[i]->getDetH(timeIdx);
         }
     }
     CHECK_POINT;
@@ -220,7 +223,7 @@ void Tracer::outputNeighbors(const TimeLevelIndex<2> &timeIdx,
     for (int i = 0; i < numConnectedCell; ++i) {
         numNeighborTracer += connectedCells[i]->getNumContainedTracer();
     }
-    
+    assert(numNeighborTracer != 0);
     file << "ngb_tracers = new((/" << numNeighborTracer << ",2/), double)" << endl;
     for (int m = 0; m < 2; ++m) {
         file << "ngb_tracers(:," << m << ") = (/";
