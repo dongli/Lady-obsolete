@@ -6,13 +6,6 @@
 
 namespace lady {
 
-// shortcuts for MLPACK classes
-typedef mlpack::tree::BinarySpaceTree<
-    mlpack::bound::HRectBound<2>,
-    mlpack::range::RangeSearchStat> Tree;
-typedef mlpack::metric::EuclideanDistance Metric;
-typedef mlpack::range::RangeSearch<Metric, Tree> Searcher;
-
 /**
  *  This class specifies the manager of linear advection.
  */
@@ -107,6 +100,8 @@ private:
                        const LADY_VELOCITY_FIELD &V);
 
     void embedTracersIntoMesh(const TimeLevelIndex<2> &timeIdx);
+
+    void connectTracerAndMesh(const TimeLevelIndex<2> &timeIdx, Tracer *tracer);
 
     /**
      *  Prepare the bidirectional remapping between tracers and mesh. Find out

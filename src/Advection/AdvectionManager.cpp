@@ -24,7 +24,9 @@ void AdvectionManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
     this->domain = &domain;
     this->mesh = &mesh;
     TimeLevelIndex<2> initTimeIdx;
+#ifndef NDEBUG
     assert(initTimeIdx.get() == 0);
+#endif
     // -------------------------------------------------------------------------
     // initialize tracer manager
     tracerManager.init(domain, mesh, numParcelX, numParcelY);
@@ -76,12 +78,14 @@ void AdvectionManager::registerTracer(const string &name, const string &units,
 
 void AdvectionManager::input(const TimeLevelIndex<2> &timeIdx,
                              vector<LADY_SCALAR_FIELD*> &q) {
+#ifndef NDEBUG
     assert(timeIdx.isCurrentIndex());
     assert(q.size() == tracerManager.getNumSpecies());
+#endif
     // -------------------------------------------------------------------------
     // copy the input tracer density onto internal mesh grids
     for (int s = 0; s < q.size(); ++s) {
-#ifdef DEBUG
+#ifndef NDEBUG
         assert(q[s]->getMesh().getTotalNumGrid(CENTER) ==
                tracerMeshCells.getMesh().getTotalNumGrid(CENTER));
 #endif
@@ -276,6 +280,7 @@ void AdvectionManager::integrate_RK4(double dt,
                 LADY_VELOCITY v(domain->getNumDim());
                 const LADY_VELOCITY_FIELD::FieldType &divergence = velocity.getDivergence();
                 double div;
+                vec rho(tracerManager.tracers.size());
                 double k1_rho[tracerManager.getNumSpecies()];
                 double k2_rho[tracerManager.getNumSpecies()];
                 double k3_rho[tracerManager.getNumSpecies()];
@@ -302,6 +307,7 @@ void AdvectionManager::integrate_RK4(double dt,
                 regrid->run(BILINEAR, oldTimeIdx, divergence, x0, div, &idx0);
                 for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
                     k1_rho[s] = -(*tracer)->getSpeciesDensity(s)*div;
+                    rho[s] = (*tracer)->getSpeciesDensity(s)+dt05*k1_rho[s];
                 }
                 mesh->move(x0, dt05, v1, idx0, x1);
                 idx1.locate(*mesh, x1);
@@ -310,7 +316,8 @@ void AdvectionManager::integrate_RK4(double dt,
                 regrid->run(BILINEAR, halfTimeIdx, velocity, x1, v2, &idx1);
                 regrid->run(BILINEAR, halfTimeIdx, divergence, x1, div, &idx1);
                 for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
-                    k2_rho[s] = -(*tracer)->getSpeciesDensity(s)*div;
+                    k2_rho[s] = -rho[s]*div;
+                    rho[s] = (*tracer)->getSpeciesDensity(s)+dt05*k2_rho[s];
                 }
                 mesh->move(x0, dt05, v2, idx0, x1);
                 idx1.locate(*mesh, x1);
@@ -319,7 +326,8 @@ void AdvectionManager::integrate_RK4(double dt,
                 regrid->run(BILINEAR, halfTimeIdx, velocity, x1, v3, &idx1);
                 regrid->run(BILINEAR, newTimeIdx, divergence, x1, div, &idx1);
                 for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
-                    k3_rho[s] = -(*tracer)->getSpeciesDensity(s)*div;
+                    k3_rho[s] = -rho[s]*div;
+                    rho[s] = (*tracer)->getSpeciesDensity(s)+dt*k3_rho[s];
                 }
                 mesh->move(x0, dt, v3, idx0, x1);
                 idx1.locate(*mesh, x1);
@@ -328,9 +336,9 @@ void AdvectionManager::integrate_RK4(double dt,
                 regrid->run(BILINEAR, newTimeIdx, velocity, x1, v4, &idx1);
                 regrid->run(BILINEAR, newTimeIdx, divergence, x1, div, &idx1);
                 for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
-                    k4_rho[s] = -(*tracer)->getSpeciesDensity(s)*div;
+                    k4_rho[s] = -rho[s]*div;
                     (*tracer)->getSpeciesDensity(s) += dt*
-                        (k1_rho[s]+2*k2_rho[s]+2*k3_rho[s]+k4_rho[s])/6;
+                        (k1_rho[s]+2.0*k2_rho[s]+2.0*k3_rho[s]+k4_rho[s])/6.0;
                 }
                 v = (v1+v2*2.0+v3*2.0+v4)/6.0;
                 mesh->move(x0, dt, v, idx0, x1);
@@ -394,70 +402,60 @@ void AdvectionManager::embedTracersIntoMesh(const TimeLevelIndex<2> &timeIdx) {
     }
 }
 
-void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
-    // -------------------------------------------------------------------------
-    // reset the connection between tracers and cells
-    LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();
-    for (; tracer != tracerManager.tracers.end(); ++tracer) {
-        (*tracer)->resetConnectedCells();
+void AdvectionManager::connectTracerAndMesh(const TimeLevelIndex<2> &timeIdx,
+                                            Tracer *tracer) {
+    // call mlpack::range::RangeSearch to find out the neighbor cells of tracers
+    // and set the data structures for both cells and tracers for remapping
+    Searcher a(cellTree, NULL, cellCoords,
+               tracer->getX(timeIdx).getCartCoord(), true);
+    double longAxisSize = tracer->getShapeSize(timeIdx)(0);
+    mlpack::math::Range r(0.0, longAxisSize);
+    vector<vector<size_t> > neighbors;
+    vector<vector<double> > distances;
+    a.Search(r, neighbors, distances);
+    LADY_BODY_COORD y(domain->getNumDim());
+    for (int i = 0; i < neighbors[0].size(); ++i) {
+        int cellIdx = cellCoordsMap[neighbors[0][i]];
+        TracerMeshCell *cell = &tracerMeshCells(timeIdx, cellIdx);
+        // calculate the tracer shape function for the cell
+        tracer->getBodyCoord(*domain, timeIdx, cell->getCoord(), y);
+        double f = tracer->getShapeFunction(timeIdx, y);
+        if (f > 0.0) {
+            cell->connect(tracer, f);
+            tracer->connect(cell, f);
+        }
     }
+    assert(tracer->getConnectedCells().size() != 0);
+}
+
+void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
     for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
         tracerMeshCells(timeIdx, i).resetConnectedTracers();
     }
-    // -------------------------------------------------------------------------
-    // call mlpack::range::RangeSearch to find out the neighbor cells of tracers
-    // and set the data structures for both cells and tracers for remapping
-    clock_t time1 = 0, time2 = 0;
-    tracer = tracerManager.tracers.begin();
+    LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();
     for (; tracer != tracerManager.tracers.end(); ++tracer) {
-        // =====================================================================
-        // search neighbor cells for the tracer
-        LADY_SPACE_COORD &x = (*tracer)->getX(timeIdx);
-        clock_t clock1 = clock();
-        Searcher a(cellTree, NULL, cellCoords, x.getCartCoord(), true);
-        double longAxisSize = (*tracer)->getShapeSize(timeIdx)(0);
-        mlpack::math::Range r(0.0, longAxisSize);
-        vector<vector<size_t> > neighbors;
-        vector<vector<double> > distances;
-        a.Search(r, neighbors, distances);
-        clock_t clock2 = clock();
-        time1 += clock2-clock1;
-        // =====================================================================
-        // set data structures for the tracer and its neighbor cells
-        clock1 = clock();
-        LADY_BODY_COORD y(domain->getNumDim());
-        for (int i = 0; i < neighbors[0].size(); ++i) {
-            int cellIdx = cellCoordsMap[neighbors[0][i]];
-            TracerMeshCell *cell = &tracerMeshCells(timeIdx, cellIdx);
-            // calculate the tracer shape function for the cell
-            (*tracer)->getBodyCoord(*domain, timeIdx, cell->getCoord(), y);
-            double f = (*tracer)->getShapeFunction(timeIdx, y);
-            if (f > 0.0) {
-                cell->connect(*tracer, f);
-                (*tracer)->connect(cell, f);
-            }
-        }
-        clock2 = clock();
-        time2 = clock2-clock1;
-        assert((*tracer)->getConnectedCells().size() != 0);
+        (*tracer)->resetConnectedCells();
+        connectTracerAndMesh(timeIdx, *tracer);
     }
-    REPORT_NOTICE("Range search uses " << setw(6) << setprecision(2) << (double)(time1)/CLOCKS_PER_SEC << " seconds.");
-    REPORT_NOTICE("Shape function uses " << setw(6) << setprecision(2) << (double)(time2)/CLOCKS_PER_SEC << " seconds.");
 }
 
 void AdvectionManager::mixTracersIfNecessary(const TimeLevelIndex<2> &timeIdx) {
     LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();
     for (; tracer != tracerManager.tracers.end(); ++tracer) {
-        if ((*tracer)->getBadType() != Tracer::GOOD_SHAPE) {
-#ifdef DEBUG
+        if ((*tracer)->getBadType() == Tracer::EXTREME_FILAMENTATION) {
+#ifndef NDEBUG
             (*tracer)->outputNeighbors(timeIdx, *domain);
-            CHECK_POINT
 #endif
             (*tracer)->mixWithNeighborTracers(timeIdx, *domain);
-            if ((*tracer)->getBadType() == Tracer::EXTREME_FILAMENTATION) {
-                (*tracer)->adjustDeformMatrix(timeIdx);
-            }
+            (*tracer)->adjustDeformMatrix(timeIdx);
             (*tracer)->resetSkeleton(*domain, *mesh, timeIdx);
+            // disconnect from the cells
+            for (int i = 0; i < (*tracer)->getNumConnectedCell(); ++i) {
+                TracerMeshCell *cell = (*tracer)->getConnectedCells()[i];
+                cell->disconnect(*tracer);
+            }
+            (*tracer)->resetConnectedCells();
+            connectTracerAndMesh(timeIdx, *tracer);
         }
     }
 }
@@ -475,6 +473,9 @@ void AdvectionManager::remapMeshToTracers(const TimeLevelIndex<2> &timeIdx) {
                 double &rho = (*tracer)->getSpeciesDensity(s);
                 rho += cells[i]->getSpeciesDensity(s)*weight;
             }
+        }
+        for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+            (*tracer)->calcSpeciesMass(timeIdx, s);
         }
     }
 }
@@ -512,15 +513,15 @@ void AdvectionManager::correctTotalMassOnMesh(const TimeLevelIndex<2> &timeIdx) 
     calcTotalMass(timeIdx);
     for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
         double fixer = expectedTotalMass[s]/totalMass.getLevel(timeIdx)[s];
-#ifdef DEBUG
+#ifndef NDEBUG
         double biasPercent = (totalMass.getLevel(timeIdx)[s]-expectedTotalMass[s])/expectedTotalMass[s];
         REPORT_NOTICE("Mass conservation bias percentage is " << std::fixed << setw(10) << setprecision(4) << biasPercent*100 << "%.");
 #endif
         for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
             tracerMeshCells(timeIdx, i).getSpeciesDensity(s) *= fixer;
         }
+        totalMass.getLevel(timeIdx)[s] = expectedTotalMass[s];
     }
-    calcTotalMass(timeIdx);
 }
 
 }

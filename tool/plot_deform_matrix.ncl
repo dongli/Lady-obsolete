@@ -12,6 +12,7 @@ begin
     ; res_bg@gsnMaximize = True
     res_bg@gsnDraw = False
     res_bg@gsnFrame = False
+    ; a = 1
     a = 5.0e+06
     res_bg@trXMinF = -a
     res_bg@trXMaxF = a

@@ -3,7 +3,6 @@
 
 #include "geomtk.h"
 #include <mlpack/methods/range_search/range_search.hpp>
-#include <nlopt.hpp>
 
 #include <iostream>
 #include <iomanip>
@@ -13,7 +12,7 @@
 #include <fstream>
 
 namespace lady {
-    
+
 using std::cout;
 using std::endl;
 using std::setw;
@@ -39,6 +38,13 @@ using geomtk::TimeUnit;
 const int FULL = geomtk::RLLStagger::GridType::FULL;
 const int HALF = geomtk::RLLStagger::GridType::HALF;
 const int CENTER = geomtk::RLLStagger::Location::CENTER;
+
+// shortcuts for MLPACK classes
+typedef mlpack::tree::BinarySpaceTree<
+mlpack::bound::HRectBound<2>,
+mlpack::range::RangeSearchStat> Tree;
+typedef mlpack::metric::EuclideanDistance Metric;
+typedef mlpack::range::RangeSearch<Metric, Tree> Searcher;
 
 // TODO: Use typedef instead of #define.
 #define LADY_SPACE_COORD geomtk::SphereCoord

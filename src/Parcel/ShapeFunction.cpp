@@ -41,7 +41,9 @@ void ShapeFunction::evalFunc(const LADY_BODY_COORD &y, double &f) {
 }
 
 void ShapeFunction::evalDerv(const LADY_BODY_COORD& y, vec &d) {
+#ifndef NDEBUG
     assert(d.size() == domain->getNumDim());
+#endif
     d.ones();
     for (int i = 0; i < domain->getNumDim(); ++i) {
         for (int j = 0; j < domain->getNumDim(); ++j) {

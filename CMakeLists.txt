@@ -12,14 +12,11 @@ cmake_minimum_required (VERSION 2.8)
 # ------------------------------------------------------------------------------
 project (lady CXX)
 
-add_definitions (-DDEBUG)
-
 option (USE_SYSTEM_MLPACK "Use system library MLPACK" ON)
-option (USE_SYSTEM_NLOPT "Use system library NLopt" ON)
 
 # ------------------------------------------------------------------------------
 # external libraries
-# MLPACK
+# mlpack
 set (mlpack_internal_root "${PROJECT_SOURCE_DIR}/external/mlpack-1.0.8")
 if (EXISTS "${mlpack_internal_root}" AND NOT ${USE_SYSTEM_MLPACK})
     # use internal MLPACK
@@ -45,47 +42,13 @@ else ()
     endif ()
 endif ()
 
-# NLopt
-set (nlopt_internal_root "${PROJECT_SOURCE_DIR}/external/nlopt-2.4.1")
-if (EXISTS "${nlopt_internal_root}" AND NOT ${USE_SYSTEM_NLOPT})
-    # use internal NLopt
-    message ("@@ Use internal library NLopt!")
-    add_subdirectory ("${nlopt_internal_root}")
-else ()
-    # use user provided NLopt
-    if (DEFINED ENV{NLOPT_ROOT})
-        message ("@@ Use user provided library NLopt.")
-        message ("@@ NLOPT_ROOT = $ENV{NLOPT_ROOT}")
-        set (NLOPT_INCLUDE_DIR "$ENV{NLOPT_ROOT}/include")
-        set (NLOPT_LIBRARY_DIR "$ENV{NLOPT_ROOT}/lib")
-        include_directories (${NLOPT_INCLUDE_DIR})
-        link_directories (${NLOPT_LIBRARY_DIR})
-    else ()
-        message (FATAL_ERROR
-            "CMake couldn't find library NLopt! "
-            "If it have been installed and you know where it is, "
-            "set NLOPT_ROOT (e.g. in .bashrc) to it."
-        )
-    endif ()
-endif ()
-
-# GeoMTK
+# geomtk
 add_subdirectory ("${PROJECT_SOURCE_DIR}/external/geomtk")
-include_directories (
-    ${GEOMTK_INCLUDE_DIRS}
-)
-link_directories (
-    ${GEOMTK_LIBRARY_DIRS}
-)
+include_directories (${GEOMTK_INCLUDE_DIRS})
 
-# Barotropic-model
+# barotropic-model
 add_subdirectory ("${PROJECT_SOURCE_DIR}/external/barotropic-model")
-include_directories (
-    ${BAROTROPIC_MODEL_INCLUDE_DIRS}
-)
-link_directories (
-    ${BAROTROPIC_MODEL_LIBRARY_DIRS}
-)
+include_directories (${BAROTROPIC_MODEL_INCLUDE_DIRS})
 
 # ------------------------------------------------------------------------------
 # source directory structure
@@ -114,7 +77,7 @@ endforeach ()
 # ------------------------------------------------------------------------------
 # library targets
 add_library (lady STATIC ${headers} ${sources})
-target_link_libraries (lady mlpack nlopt)
+target_link_libraries (lady geomtk barotropic-model mlpack)
 add_dependencies (lady geomtk barotropic-model)
 
 # ------------------------------------------------------------------------------

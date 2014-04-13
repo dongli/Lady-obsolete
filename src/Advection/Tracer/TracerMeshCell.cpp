@@ -20,7 +20,7 @@ void TracerMeshCell::resetConnectedTracers() {
 }
 
 void TracerMeshCell::connect(Tracer *tracer, double weight) {
-#ifdef DEBUG
+#ifndef NDEBUG
     for (int i = 0; i < numConnectedTracer; ++i) {
         if (connectedTracers[i] == tracer) {
             REPORT_ERROR("Tracer (ID = " << tracer->getID() <<
@@ -42,6 +42,28 @@ void TracerMeshCell::connect(Tracer *tracer, double weight) {
     totalRemapWeight += weight;
 }
 
+void TracerMeshCell::disconnect(Tracer *tracer) {
+#ifndef NDEBUG
+    int i = 0;
+    for (; i < numConnectedTracer; ++i) {
+        if (connectedTracers[i] == tracer) {
+            break;
+        }
+    }
+    assert(i != numConnectedTracer);
+#endif
+    for (int i = 0; i < numConnectedTracer; ++i) {
+        if (connectedTracers[i] == tracer) {
+            totalRemapWeight -= remapWeights[i];
+            for (int j = i+1; j < numConnectedTracer; ++j) {
+                connectedTracers[j-1] = connectedTracers[j];
+            }
+            numConnectedTracer--;
+            break;
+        }
+    }
+}
+
 double TracerMeshCell::getRemapWeight(Tracer *tracer) const {
     for (int i = 0; i < numConnectedTracer; ++i) {
         if (connectedTracers[i] == tracer) {
@@ -56,7 +78,7 @@ void TracerMeshCell::resetContainedTracers() {
 }
 
 void TracerMeshCell::contain(Tracer *tracer) {
-#ifdef DEBUG
+#ifndef NDEBUG
     for (int i = 0; i < numContainedTracer; ++i) {
         if (containedTracers[i] == tracer) {
             REPORT_ERROR("Tracer (ID = " << tracer->getID() <<

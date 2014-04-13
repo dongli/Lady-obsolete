@@ -27,14 +27,14 @@ begin
     ; res@cnFillMode = "RasterFill"
     res@gsnSpreadColors = True
     res@cnLevelSelectionMode = "ManualLevels"
-    res@cnMinLevelValF = 70000
-    res@cnMaxLevelValF = 88000
-    res@cnLevelSpacingF = 500.0
-    ; res@cnMinLevelValF = 0.0
+    ; res@cnMinLevelValF = 78000
+    ; res@cnMaxLevelValF = 88000
+    ; res@cnLevelSpacingF = 500.0
+    res@cnMinLevelValF = 0.0
     ; res@cnMaxLevelValF = 1000.0
     ; res@cnLevelSpacingF = 50.0
-    ; res@cnMaxLevelValF = 1.1
-    ; res@cnLevelSpacingF = 0.05
+    res@cnMaxLevelValF = 1.1
+    res@cnLevelSpacingF = 0.1
     ; res@cnMinLevelValF = 0
     ; res@cnMaxLevelValF = 2
     ; res@cnLevelSpacingF = 0.1
@@ -46,12 +46,13 @@ begin
         system("echo file: "+fs(l))
         f = addfile(fs(l), "r")
         num_lat = dimsizes(f->lat)
-        q = f->q0
-        ; q = f->q1/f->q0
+        ; q = f->q1
+        q = f->q1/f->q0
         copy_VarCoords(f->q0, q)
         ;res@gsnRightString = "Max:"+sprintf("%8.1f", max(q(1:num_lat-2,:)))
         ;plot = gsn_csm_contour_map(wks, q(1:num_lat-2,:), res)
-        res@gsnRightString = "Max:"+sprintf("%8.1f", max(q))
+        res@gsnRightString = "Min:"+sprintf("%8.5f", min(q))+" "+ \
+                             "Max:"+sprintf("%8.5f", max(q))
         plot = gsn_csm_contour_map(wks, q, res)
     end do
 

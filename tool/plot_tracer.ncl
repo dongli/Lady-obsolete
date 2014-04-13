@@ -32,7 +32,7 @@ begin
 
     res_map = True
     res_map@gsnFrame = False
-    res_map@mpCenterLonF = 180.0
+    res_map@mpCenterLonF = 180
     res_map@mpOutlineOn = False
 
     res_tracer = True
@@ -53,11 +53,13 @@ begin
     ; check = ispan(10000, 10240, 10)
     check = (/28565/)
 
-    do l = 0, num_time-1, 2
+    do l = 0, num_time-1
         system("echo file: "+fs(l))
         f = addfile(fs(l), "r")
-        res_map@gsnPolar = "NH"
-        res_map@mpMinLatF = 70
+        ; res_map@gsnPolar = "NH"
+        ; res_map@mpMinLatF = 70
+        ; res_map@gsnPolar = "SH"
+        ; res_map@mpMaxLatF = -70
         ; if (isdefined("check")) then
         ;     res_map@mpProjection = "Satellite"
         ;     res_map@mpCenterLonF = f->c(check(0),0)/RAD
@@ -70,7 +72,7 @@ begin
         ; end if
         map = gsn_csm_map(wks, res_map)
         ; tracer centroid
-        do i = 0, num_tracer-1, 5
+        do i = 0, num_tracer-1, 1
             c = (/f->c(i,0),f->c(i,1)/)/RAD
             if (isdefined("check") .and. any(check .eq. i)) then
                 res_tracer@gsMarkerColor = "blue"

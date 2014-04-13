@@ -62,7 +62,7 @@ public:
     void addSpecies() { density.push_back(0); }
 
     double& getSpeciesDensity(int speciesIdx) {
-#ifdef DEBUG
+#ifndef NDEBUG
         if (speciesIdx >= density.size()) {
             REPORT_ERROR("Species index " << speciesIdx << " exceeds range [0," <<
                          density.size()-1 << "]!");
@@ -72,7 +72,7 @@ public:
     }
 
     double getSpeciesDensity(int speciesIdx) const {
-#ifdef DEBUG
+#ifndef NDEBUG
         if (speciesIdx >= density.size()) {
             REPORT_ERROR("Species index " << speciesIdx << " exceeds range [0," <<
                          density.size()-1 << "]!");
@@ -93,6 +93,8 @@ public:
     void resetConnectedTracers();
 
     void connect(Tracer *tracer, double weight);
+
+    void disconnect(Tracer *tracer);
     
     int getNumConnectedTracer() const { return numConnectedTracer; }
     

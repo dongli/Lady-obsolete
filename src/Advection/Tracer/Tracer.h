@@ -16,10 +16,11 @@ class TracerMeshCell;
 class Tracer : public Parcel {
 public:
     enum BadDeformMatrixType {
-        GOOD_SHAPE, POOR_LINEAR_APPROXIMATION, EXTREME_FILAMENTATION
+        GOOD_SHAPE, EXTREME_FILAMENTATION
     };
 protected:
     vector<double> density; //>! species density array
+    vector<double> mass;    //>! species mass array
     TracerSkeleton *skeleton;
     BadDeformMatrixType badType;
     /**
@@ -41,10 +42,10 @@ public:
     /**
      *  Add a species.
      */
-    void addSpecies() { density.push_back(0); }
+    void addSpecies() { density.push_back(0); mass.push_back(0); }
 
     double& getSpeciesDensity(int speciesIdx) {
-#ifdef DEBUG
+#ifndef NDEBUG
         if (speciesIdx >= density.size()) {
             REPORT_ERROR("Species index " << speciesIdx << " exceeds range [0," <<
                          density.size()-1 << "]!");
@@ -54,13 +55,17 @@ public:
     }
 
     double getSpeciesDensity(int speciesIdx) const {
-#ifdef DEBUG
+#ifndef NDEBUG
         if (speciesIdx >= density.size()) {
             REPORT_ERROR("Species index " << speciesIdx << " exceeds range [0," <<
                          density.size()-1 << "]!");
         }
 #endif
         return density[speciesIdx];
+    }
+    
+    void calcSpeciesMass(const TimeLevelIndex<2> &timeIdx, int speciesIdx) {
+        mass[speciesIdx] = density[speciesIdx]*detH.getLevel(timeIdx);
     }
 
     void resetSpecies() {
@@ -114,7 +119,9 @@ public:
     int getNumConnectedCell() const { return numConnectedCell; }
 
     double getTotalRemapWeight() const {
+#ifndef NDEBUG
         assert(totalRemapWeight != 0.0);
+#endif
         return totalRemapWeight;
     }
 
@@ -138,7 +145,7 @@ public:
     void resetSkeleton(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
                        const TimeLevelIndex<2> &timeIdx);
 
-#ifdef DEBUG
+#ifndef NDEBUG
     void outputNeighbors(const TimeLevelIndex<2> &timeIdx,
                          const LADY_DOMAIN &domain);
 #endif

@@ -47,7 +47,6 @@ void Tracer::updateDeformMatrix(const LADY_DOMAIN &domain,
     skeleton->updateLocalCoord(domain, timeIdx);
     const vector<vec> &xl = skeleton->getLocalCoords(timeIdx);
     const vector<LADY_BODY_COORD*> &y = skeleton->getBodyCoords();
-    const vector<LADY_SPACE_COORD*> &x = skeleton->getSpaceCoords(timeIdx);
     LADY_MATRIX &H0 = *H.getLevel(timeIdx);
     if (domain.getNumDim() == 2) {
         // elements of four matrices H_12, H_14, H_32, H_34
@@ -64,15 +63,26 @@ void Tracer::updateDeformMatrix(const LADY_DOMAIN &domain,
         H0(0, 1) = (h12_2+h12_4)*0.5;
         H0(1, 0) = (h21_1+h21_3)*0.5;
         H0(1, 1) = (h22_2+h22_4)*0.5;
-        detH.getLevel(timeIdx) = det(H0);
+        if (!arma::svd(U, s, V, *H.getLevel(timeIdx))) {
+            REPORT_ERROR("Encounter error with arma::svd!");
+        }
+#ifndef NDEBUG
+        assert(s[0] >= s[1]);
+#endif
+        // reset the determinant of H to parcel volume
+        // NOTE: Parcel volume is represented by the first tracer.
+        if (density.size() != 0) {
+            double volume = mass[0]/density[0];
+            double ratio = volume/(s[0]*s[1]);
+            s[0] *= ratio;
+            s[1] *= ratio;
+            H0 = U*diagmat(s)*V.t();
+            resetSkeleton(domain, mesh, timeIdx);
+        }
+        detH.getLevel(timeIdx) = s[0]*s[1];
         *invH.getLevel(timeIdx) = inv(H0);
         // check the degree of filamentation
-        if (detH.getLevel(timeIdx) < 0) {
-            // use last time step H
-            if (!arma::svd(U, s, V, *H.getLevel(timeIdx-1))) {
-                REPORT_ERROR("Encounter error with arma::svd!");
-            }
-            assert(s[0] >= s[1]);
+        if (s[0]/s[1] > 10) {
             badType = EXTREME_FILAMENTATION;
             std::ofstream file("deform_matrix.dat");
             file << "H = new((/5,2,2/), double)" << endl;
@@ -94,38 +104,6 @@ void Tracer::updateDeformMatrix(const LADY_DOMAIN &domain,
             file.close();
             CHECK_POINT;
         }
-        // judge if the linear deformation approximation is ok
-        if (badType == GOOD_SHAPE) {
-            static const double threshold = 0.5;
-            for (int i = 0; i < y.size(); ++i) {
-                LADY_BODY_COORD Y(domain.getNumDim());
-                getBodyCoord(domain, timeIdx, *x[i], Y);
-                double bias = norm(Y()-(*y[i])(), 2);
-                if (bias >= threshold) {
-                    badType = POOR_LINEAR_APPROXIMATION;
-                    std::ofstream file("deform_matrix.dat");
-                    file << "H = new((/5,2,2/), double)" << endl;
-                    file << "H(0,:,:) = (/(/" << H0(0, 0) << "," << H0(0, 1) << "/), \\" << endl;
-                    file << "             (/" << H0(1, 0) << "," << H0(1, 1) << "/)/)" << endl;
-                    file << "H(1,:,:) = (/(/" << h11_1 << "," << h12_2 << "/), \\" << endl;
-                    file << "             (/" << h21_1 << "," << h22_2 << "/)/)" << endl;
-                    file << "H(2,:,:) = (/(/" << h11_1 << "," << h12_4 << "/), \\" << endl;
-                    file << "             (/" << h21_1 << "," << h22_4 << "/)/)" << endl;
-                    file << "H(3,:,:) = (/(/" << h11_3 << "," << h12_2 << "/), \\" << endl;
-                    file << "             (/" << h21_3 << "," << h22_2 << "/)/)" << endl;
-                    file << "H(4,:,:) = (/(/" << h11_3 << "," << h12_4 << "/), \\" << endl;
-                    file << "             (/" << h21_3 << "," << h22_4 << "/)/)" << endl;
-                    file << "xs = new((/4,2/), double)" << endl;
-                    file << "xs(0,:) = (/" << xl[0][0] << "," << xl[0][1] << "/)" << endl;
-                    file << "xs(1,:) = (/" << xl[1][0] << "," << xl[1][1] << "/)" << endl;
-                    file << "xs(2,:) = (/" << xl[2][0] << "," << xl[2][1] << "/)" << endl;
-                    file << "xs(3,:) = (/" << xl[3][0] << "," << xl[3][1] << "/)" << endl;
-                    file.close();
-                    CHECK_POINT;
-                    break;
-                }
-            }
-        }
     } else if (domain.getNumDim() == 3) {
         REPORT_ERROR("Under construction!");
     }
@@ -139,64 +117,102 @@ void Tracer::mixWithNeighborTracers(const TimeLevelIndex<2> &timeIdx,
     for (int i = 0; i < numConnectedCell; ++i) {
         TracerMeshCell *cell = connectedCells[i];
         for (int j = 0; j < cell->getNumContainedTracer(); ++j) {
-            Tracer *ngb = cell->getContainedTracers()[j];
-            tracers.push_back(ngb);
+            tracers.push_back(cell->getContainedTracers()[j]);
         }
     }
+    REPORT_WARNING("Tracer " << ID << " is extremely elongated with " <<
+                   tracers.size() << " neighbor tracers.");
     LADY_BODY_COORD y(domain.getNumDim());
     vec weights(tracers.size());
+    vec maxDensity(density.size()), minDensity(density.size());
+    vec totalMass0(density.size()), totalMass1(density.size());
+    for (int s = 0; s < density.size(); ++s) {
+        maxDensity[s] = -1.0e33;
+        minDensity[s] =  1.0e33;
+        totalMass0[s] = 0.0;
+        totalMass1[s] = 0.0;
+        for (int i = 0; i < tracers.size(); ++i) {
+            if (maxDensity[s] < tracers[i]->density[s]) {
+                maxDensity[s] = tracers[i]->density[s];
+            }
+            if (minDensity[s] > tracers[i]->density[s]) {
+                minDensity[s] = tracers[i]->density[s];
+            }
+        }
+    }
     mat newDensity(density.size(), tracers.size());
     for (int i = 0; i < tracers.size(); ++i) {
         for (int s = 0; s < density.size(); ++s) {
             newDensity(s, i) = 0;
+            totalMass0[s] += tracers[i]->mass[s];
         }
+    }
+    for (int i = 0; i < tracers.size(); ++i) {
+        double volume = tracers[i]->getDetH(timeIdx);
         for (int j = 0; j < tracers.size(); ++j) {
             tracers[i]->getBodyCoord(domain, timeIdx, tracers[j]->getX(timeIdx), y);
             // TODO: We should introduce a parameter to control the mixing degree.
-            weights[j] = pow(tracers[i]->getShapeFunction(timeIdx, y), 5);
+            weights[j] = pow(tracers[i]->getShapeFunction(timeIdx, y), 2)*volume;
         }
         weights = weights/sum(weights);
         for (int j = 0; j < tracers.size(); ++j) {
             for (int s = 0; s < density.size(); ++s) {
-                newDensity(s, i) += tracers[j]->density[s]*tracers[j]->getDetH(timeIdx)*weights[j];
+                newDensity(s, i) += tracers[j]->density[s]*weights[j];
             }
         }
-    }
-    // copy new density
-    for (int i = 0; i < tracers.size(); ++i) {
         for (int s = 0; s < density.size(); ++s) {
-            tracers[i]->density[s] = newDensity(s, i)/tracers[i]->getDetH(timeIdx);
+            assert(newDensity(s, i) > 0);
+            if (fabs(newDensity(s, i)-maxDensity[s]) < 1.0e-15) {
+                newDensity(s, i) = maxDensity[s];
+            }
+            if (fabs(newDensity(s, i)-minDensity[s]) < 1.0e-15) {
+                newDensity(s, i) = minDensity[s];
+            }
+            assert(newDensity(s, i) <= maxDensity[s]);
+            assert(newDensity(s, i) >= minDensity[s]);
+            totalMass1[s] += newDensity(s, i)*volume;
+        }
+    }
+    for (int i = 0; i < tracers.size(); ++i) {
+        double volume = tracers[i]->getDetH(timeIdx);
+        for (int s = 0; s < density.size(); ++s) {
+            tracers[i]->density[s] = newDensity(s, i)*totalMass0[s]/totalMass1[s];
+            tracers[i]->mass[s] = newDensity(s, i)*volume;
         }
     }
     CHECK_POINT;
 }
 
 void Tracer::adjustDeformMatrix(const TimeLevelIndex<2> &timeIdx) {
+#ifndef NDEBUG
     assert(badType == EXTREME_FILAMENTATION);
-    // reduce the long and short semiaxis ratio by half times
-    s[0] *= 0.6;
-    s[1] *= 1.2;
+#endif
+    double a = s[0]/s[1], b = s[0]*s[1];
+    s[1] = sqrt(2*b/a);
+    s[0] = 0.5*a*s[1];
     (*H.getLevel(timeIdx)) = U*diagmat(s)*V.t();
     detH.getLevel(timeIdx) = det(*H.getLevel(timeIdx));
     *invH.getLevel(timeIdx) = inv(*H.getLevel(timeIdx));
+#ifndef NDEBUG
     assert(detH.getLevel(timeIdx) > 0);
+#endif
+    badType = GOOD_SHAPE;
 }
 
 void Tracer::resetSkeleton(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
                            const TimeLevelIndex<2> &timeIdx) {
-    assert(badType != GOOD_SHAPE);
     // reset skeleton points
     const vector<LADY_BODY_COORD*> &y = skeleton->getBodyCoords();
     vector<LADY_SPACE_COORD*> &x = skeleton->getSpaceCoords(timeIdx);
     vector<LADY_MESH_INDEX*> &meshIdx = skeleton->getMeshIdxs(timeIdx);
     for (int i = 0; i < x.size(); ++i) {
         getSpaceCoord(domain, timeIdx, *y[i], *x[i]);
+        meshIdx[i]->reset();
         meshIdx[i]->locate(mesh, *x[i]);
     }
-    badType = GOOD_SHAPE;
 }
 
-#ifdef DEBUG
+#ifndef NDEBUG
 void Tracer::outputNeighbors(const TimeLevelIndex<2> &timeIdx,
                              const LADY_DOMAIN &domain) {
     std::ofstream file; file.open("neighbors.txt");

@@ -17,7 +17,7 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
     this->domain = &domain;
     int numTracer = 0;
     // calculate the total number of tracers
-#define USE_FULL_LAT_LON
+//#define USE_FULL_LAT_LON
 #ifdef LADY_USE_SPHERE_DOMAIN
 #ifdef USE_FULL_LAT_LON
     numTracer = numTracerX*numTracerY;
