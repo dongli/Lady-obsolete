@@ -111,7 +111,9 @@ private:
      */
     void connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx);
 
-    void mixTracersIfNecessary(const TimeLevelIndex<2> &timeIdx);
+    void splitTracers(const TimeLevelIndex<2> &timeIdx);
+    
+    void mergeTracers(const TimeLevelIndex<2> &timeIdx);
 
     /**
      *  Remap the tracer mass from mesh cells to tracers.

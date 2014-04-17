@@ -6,6 +6,7 @@ double ShapeFunction::J;
 vec ShapeFunction::nodes;
 vec ShapeFunction::weights;
 const LADY_DOMAIN* ShapeFunction::domain;
+double ShapeFunction::maxValue;
 
 void ShapeFunction::init(const LADY_DOMAIN &domain_) {
     J = 1.0/12.0;
@@ -17,6 +18,8 @@ void ShapeFunction::init(const LADY_DOMAIN &domain_) {
     nodes(2) =      0.0; weights(2) = 566.0/1280.0;
     nodes(3) =  1.0/3.0; weights(3) = 316.0/1280.0;
     nodes(4) =  2.0/3.0; weights(4) =  41.0/1280.0;
+    
+    maxValue = pow(4.0/3.0, domain_.getNumDim());
 
     domain = &domain_;
 }

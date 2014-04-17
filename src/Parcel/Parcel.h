@@ -17,6 +17,9 @@ protected:
     TimeLevels<LADY_MATRIX*, 2> invH;       //>! inversion of H
     TimeLevels<vec::fixed<2>, 2> shapeSize; //>! parcel shape size
     TimeLevels<LADY_MESH_INDEX*, 2> idx;    //>! parcel mesh index
+    
+    mat U, V;   //>! SVD decomposed matrices
+    vec S;      //>! SVD decomposed matrices
 public:
     Parcel(int numDim);
     virtual ~Parcel();
@@ -60,6 +63,10 @@ public:
     }
 
     double getDetH(const TimeLevelIndex<2> &timeIdx) const {
+        return detH.getLevel(timeIdx);
+    }
+    
+    double& getDetH(const TimeLevelIndex<2> &timeIdx) {
         return detH.getLevel(timeIdx);
     }
 
@@ -109,6 +116,12 @@ public:
     double getShapeFunction(const TimeLevelIndex<2> &timeIdx,
                             const LADY_BODY_COORD &y);
 
+    mat& getU() { return U; }
+    
+    mat& getV() { return V; }
+    
+    vec& getS() { return S; }
+    
     void updateShapeSize(const LADY_DOMAIN &domain,
                          const TimeLevelIndex<2> &timeIdx);
 

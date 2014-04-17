@@ -10,10 +10,10 @@ int main(int argc, const char *argv[])
 #if USE_DEFORMATION_TEST_CASE == 1
     lady::DeformationTestCase testCase(lady::DeformationTestCase::CASE4,
                                        lady::DeformationTestCase::SLOTTED_CYLINDERS);
-    geomtk::StampString o1("tracers.deform.80x40.", ".nc");
+    geomtk::StampString o1("tracers.deform.240x120.", ".nc");
 #elif USE_SOLID_ROTATION_TEST_CASE == 1
     lady::SolidRotationTestCase testCase;
-    geomtk::StampString o1("tracers.rotation.80x40.", ".nc");
+    geomtk::StampString o1("tracers.rotation.240x120.", ".nc");
 #elif USE_BAROTROPIC_TEST_CASE == 1
     lady::BarotropicTestCase testCase;
     geomtk::StampString o1("tracers.barotropic.80x40.", ".nc");
@@ -41,7 +41,8 @@ int main(int argc, const char *argv[])
         advectionManager.advance(timeManager.getStepSize(), newTimeIdx,
                                  testCase.getVelocityField());
 #if CALCULATE_SOLUTION == 1
-        testCase.calcSolution(time, newTimeIdx, advectionManager);
+        testCase.calcSolution(timeManager.getStepSize(),
+                              newTimeIdx, advectionManager);
 #endif
         timeManager.advance();
         oldTimeIdx.shift();

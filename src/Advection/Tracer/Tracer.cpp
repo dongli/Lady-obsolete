@@ -28,7 +28,6 @@ Tracer& Tracer::operator=(const Tracer &other) {
 
 void Tracer::resetConnectedCells() {
     numConnectedCell = 0;
-    totalRemapWeight = 0.0;
 }
 
 void Tracer::connect(TracerMeshCell *cell, double weight) {
@@ -38,7 +37,6 @@ void Tracer::connect(TracerMeshCell *cell, double weight) {
         connectedCells[numConnectedCell] = cell;
     }
     numConnectedCell++;
-    totalRemapWeight += weight;
 }
     
 void Tracer::updateDeformMatrix(const LADY_DOMAIN &domain,
@@ -63,140 +61,39 @@ void Tracer::updateDeformMatrix(const LADY_DOMAIN &domain,
         H0(0, 1) = (h12_2+h12_4)*0.5;
         H0(1, 0) = (h21_1+h21_3)*0.5;
         H0(1, 1) = (h22_2+h22_4)*0.5;
-        if (!arma::svd(U, s, V, *H.getLevel(timeIdx))) {
+        if (!svd(U, S, V, *H.getLevel(timeIdx))) {
             REPORT_ERROR("Encounter error with arma::svd!");
         }
 #ifndef NDEBUG
-        assert(s[0] >= s[1]);
+        assert(S[0] >= S[1]);
 #endif
         // reset the determinant of H to parcel volume
         // NOTE: Parcel volume is represented by the first tracer.
         if (density.size() != 0) {
-            double volume = mass[0]/density[0];
-            double ratio = volume/(s[0]*s[1]);
-            s[0] *= ratio;
-            s[1] *= ratio;
-            H0 = U*diagmat(s)*V.t();
-            resetSkeleton(domain, mesh, timeIdx);
+            int s;
+            for (s = 0; s < mass.size(); ++s) {
+                if (mass[s] != 0) {
+                    break;
+                }
+            }
+            if (s != mass.size()) {
+                double volume = mass[s]/density[s];
+                double tmp = sqrt(volume/(S[0]*S[1]));
+                S[0] *= tmp; S[1] *= tmp;
+                H0 = U*diagmat(S)*V.t();
+                resetSkeleton(domain, mesh, timeIdx);
+            }
         }
-        detH.getLevel(timeIdx) = s[0]*s[1];
+        detH.getLevel(timeIdx) = S[0]*S[1];
         *invH.getLevel(timeIdx) = inv(H0);
         // check the degree of filamentation
-        if (s[0]/s[1] > 10) {
+        if (S[0]/S[1] > 100) {
             badType = EXTREME_FILAMENTATION;
-            std::ofstream file("deform_matrix.dat");
-            file << "H = new((/5,2,2/), double)" << endl;
-            file << "H(0,:,:) = (/(/" << H0(0, 0) << "," << H0(0, 1) << "/), \\" << endl;
-            file << "             (/" << H0(1, 0) << "," << H0(1, 1) << "/)/)" << endl;
-            file << "H(1,:,:) = (/(/" << h11_1 << "," << h12_2 << "/), \\" << endl;
-            file << "             (/" << h21_1 << "," << h22_2 << "/)/)" << endl;
-            file << "H(2,:,:) = (/(/" << h11_1 << "," << h12_4 << "/), \\" << endl;
-            file << "             (/" << h21_1 << "," << h22_4 << "/)/)" << endl;
-            file << "H(3,:,:) = (/(/" << h11_3 << "," << h12_2 << "/), \\" << endl;
-            file << "             (/" << h21_3 << "," << h22_2 << "/)/)" << endl;
-            file << "H(4,:,:) = (/(/" << h11_3 << "," << h12_4 << "/), \\" << endl;
-            file << "             (/" << h21_3 << "," << h22_4 << "/)/)" << endl;
-            file << "xs = new((/4,2/), double)" << endl;
-            file << "xs(0,:) = (/" << xl[0][0] << "," << xl[0][1] << "/)" << endl;
-            file << "xs(1,:) = (/" << xl[1][0] << "," << xl[1][1] << "/)" << endl;
-            file << "xs(2,:) = (/" << xl[2][0] << "," << xl[2][1] << "/)" << endl;
-            file << "xs(3,:) = (/" << xl[3][0] << "," << xl[3][1] << "/)" << endl;
-            file.close();
-            CHECK_POINT;
         }
     } else if (domain.getNumDim() == 3) {
         REPORT_ERROR("Under construction!");
     }
     updateShapeSize(domain, timeIdx);
-}
-
-void Tracer::mixWithNeighborTracers(const TimeLevelIndex<2> &timeIdx,
-                                    const LADY_DOMAIN &domain) {
-    // collect the neighbor tracers (include this tracer)
-    vector<Tracer*> tracers;
-    for (int i = 0; i < numConnectedCell; ++i) {
-        TracerMeshCell *cell = connectedCells[i];
-        for (int j = 0; j < cell->getNumContainedTracer(); ++j) {
-            tracers.push_back(cell->getContainedTracers()[j]);
-        }
-    }
-    REPORT_WARNING("Tracer " << ID << " is extremely elongated with " <<
-                   tracers.size() << " neighbor tracers.");
-    LADY_BODY_COORD y(domain.getNumDim());
-    vec weights(tracers.size());
-    vec maxDensity(density.size()), minDensity(density.size());
-    vec totalMass0(density.size()), totalMass1(density.size());
-    for (int s = 0; s < density.size(); ++s) {
-        maxDensity[s] = -1.0e33;
-        minDensity[s] =  1.0e33;
-        totalMass0[s] = 0.0;
-        totalMass1[s] = 0.0;
-        for (int i = 0; i < tracers.size(); ++i) {
-            if (maxDensity[s] < tracers[i]->density[s]) {
-                maxDensity[s] = tracers[i]->density[s];
-            }
-            if (minDensity[s] > tracers[i]->density[s]) {
-                minDensity[s] = tracers[i]->density[s];
-            }
-        }
-    }
-    mat newDensity(density.size(), tracers.size());
-    for (int i = 0; i < tracers.size(); ++i) {
-        for (int s = 0; s < density.size(); ++s) {
-            newDensity(s, i) = 0;
-            totalMass0[s] += tracers[i]->mass[s];
-        }
-    }
-    for (int i = 0; i < tracers.size(); ++i) {
-        double volume = tracers[i]->getDetH(timeIdx);
-        for (int j = 0; j < tracers.size(); ++j) {
-            tracers[i]->getBodyCoord(domain, timeIdx, tracers[j]->getX(timeIdx), y);
-            // TODO: We should introduce a parameter to control the mixing degree.
-            weights[j] = pow(tracers[i]->getShapeFunction(timeIdx, y), 2)*volume;
-        }
-        weights = weights/sum(weights);
-        for (int j = 0; j < tracers.size(); ++j) {
-            for (int s = 0; s < density.size(); ++s) {
-                newDensity(s, i) += tracers[j]->density[s]*weights[j];
-            }
-        }
-        for (int s = 0; s < density.size(); ++s) {
-            assert(newDensity(s, i) > 0);
-            if (fabs(newDensity(s, i)-maxDensity[s]) < 1.0e-15) {
-                newDensity(s, i) = maxDensity[s];
-            }
-            if (fabs(newDensity(s, i)-minDensity[s]) < 1.0e-15) {
-                newDensity(s, i) = minDensity[s];
-            }
-            assert(newDensity(s, i) <= maxDensity[s]);
-            assert(newDensity(s, i) >= minDensity[s]);
-            totalMass1[s] += newDensity(s, i)*volume;
-        }
-    }
-    for (int i = 0; i < tracers.size(); ++i) {
-        double volume = tracers[i]->getDetH(timeIdx);
-        for (int s = 0; s < density.size(); ++s) {
-            tracers[i]->density[s] = newDensity(s, i)*totalMass0[s]/totalMass1[s];
-            tracers[i]->mass[s] = newDensity(s, i)*volume;
-        }
-    }
-    CHECK_POINT;
-}
-
-void Tracer::adjustDeformMatrix(const TimeLevelIndex<2> &timeIdx) {
-#ifndef NDEBUG
-    assert(badType == EXTREME_FILAMENTATION);
-#endif
-    double a = s[0]/s[1], b = s[0]*s[1];
-    s[1] = sqrt(2*b/a);
-    s[0] = 0.5*a*s[1];
-    (*H.getLevel(timeIdx)) = U*diagmat(s)*V.t();
-    detH.getLevel(timeIdx) = det(*H.getLevel(timeIdx));
-    *invH.getLevel(timeIdx) = inv(*H.getLevel(timeIdx));
-#ifndef NDEBUG
-    assert(detH.getLevel(timeIdx) > 0);
-#endif
-    badType = GOOD_SHAPE;
 }
 
 void Tracer::resetSkeleton(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
@@ -221,15 +118,17 @@ void Tracer::outputNeighbors(const TimeLevelIndex<2> &timeIdx,
     file << "centroid = (/" << getX(timeIdx)(0) << "," << getX(timeIdx)(1) << "/)" << endl;
     // -------------------------------------------------------------------------
     // neighbor cell locations
-    file << "ngb_cells = new((/" << numConnectedCell << ",2/), double)" << endl;
-    for (int m = 0; m < 2; ++m) {
-        file << "ngb_cells(:," << m << ") = (/";
-        for (int i = 0; i < numConnectedCell; ++i) {
-            TracerMeshCell *cell = connectedCells[i];
-            if (i != numConnectedCell-1) {
-                file << cell->getCoord()(m) << ",";
-            } else {
-                file << cell->getCoord()(m) << "/)" << endl;
+    if (numConnectedCell != 0) {
+        file << "ngb_cells = new((/" << numConnectedCell << ",2/), double)" << endl;
+        for (int m = 0; m < 2; ++m) {
+            file << "ngb_cells(:," << m << ") = (/";
+            for (int i = 0; i < numConnectedCell; ++i) {
+                TracerMeshCell *cell = connectedCells[i];
+                if (i != numConnectedCell-1) {
+                    file << cell->getCoord()(m) << ",";
+                } else {
+                    file << cell->getCoord()(m) << "/)" << endl;
+                }
             }
         }
     }
@@ -239,21 +138,22 @@ void Tracer::outputNeighbors(const TimeLevelIndex<2> &timeIdx,
     for (int i = 0; i < numConnectedCell; ++i) {
         numNeighborTracer += connectedCells[i]->getNumContainedTracer();
     }
-    assert(numNeighborTracer != 0);
-    file << "ngb_tracers = new((/" << numNeighborTracer << ",2/), double)" << endl;
-    for (int m = 0; m < 2; ++m) {
-        file << "ngb_tracers(:," << m << ") = (/";
-        int k = 0;
-        for (int i = 0; i < numConnectedCell; ++i) {
-            TracerMeshCell *cell = connectedCells[i];
-            vector<Tracer*> &tracers = cell->getContainedTracers();
-            for (int j = 0; j < cell->getNumContainedTracer(); ++j) {
-                if (k != numNeighborTracer-1) {
-                    file << tracers[j]->getX(timeIdx)(m) << ",";
-                } else {
-                    file << tracers[j]->getX(timeIdx)(m) << "/)" << endl;
+    if (numNeighborTracer != 0) {
+        file << "ngb_tracers = new((/" << numNeighborTracer << ",2/), double)" << endl;
+        for (int m = 0; m < 2; ++m) {
+            file << "ngb_tracers(:," << m << ") = (/";
+            int k = 0;
+            for (int i = 0; i < numConnectedCell; ++i) {
+                TracerMeshCell *cell = connectedCells[i];
+                vector<Tracer*> &tracers = cell->getContainedTracers();
+                for (int j = 0; j < cell->getNumContainedTracer(); ++j) {
+                    if (k != numNeighborTracer-1) {
+                        file << tracers[j]->getX(timeIdx)(m) << ",";
+                    } else {
+                        file << tracers[j]->getX(timeIdx)(m) << "/)" << endl;
+                    }
+                    k++;
                 }
-                k++;
             }
         }
     }
@@ -267,8 +167,8 @@ void Tracer::outputNeighbors(const TimeLevelIndex<2> &timeIdx,
     vector<vec::fixed<2> > shape(n);
     for (int i = 0; i < shape.size(); ++i) {
         double theta = i*dtheta;
-        y(0) = 1.2*cos(theta);
-        y(1) = 1.2*sin(theta);
+        y(0) = cos(theta);
+        y(1) = sin(theta);
         getSpaceCoord(domain, timeIdx, y, x);
         shape[i] = x();
     }

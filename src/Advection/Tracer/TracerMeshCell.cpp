@@ -16,7 +16,6 @@ TracerMeshCell::~TracerMeshCell() {
 
 void TracerMeshCell::resetConnectedTracers() {
     numConnectedTracer = 0;
-    totalRemapWeight = 0;
 }
 
 void TracerMeshCell::connect(Tracer *tracer, double weight) {
@@ -27,9 +26,6 @@ void TracerMeshCell::connect(Tracer *tracer, double weight) {
                          ") has already been connected!");
         }
     }
-    if (numConnectedTracer == 0) {
-        assert(totalRemapWeight == 0);
-    }
 #endif
     if (numConnectedTracer == connectedTracers.size()) {
         connectedTracers.push_back(tracer);
@@ -39,7 +35,6 @@ void TracerMeshCell::connect(Tracer *tracer, double weight) {
         remapWeights[numConnectedTracer] = weight;
     }
     numConnectedTracer++;
-    totalRemapWeight += weight;
 }
 
 void TracerMeshCell::disconnect(Tracer *tracer) {
@@ -54,9 +49,9 @@ void TracerMeshCell::disconnect(Tracer *tracer) {
 #endif
     for (int i = 0; i < numConnectedTracer; ++i) {
         if (connectedTracers[i] == tracer) {
-            totalRemapWeight -= remapWeights[i];
             for (int j = i+1; j < numConnectedTracer; ++j) {
                 connectedTracers[j-1] = connectedTracers[j];
+                remapWeights[j-1] = remapWeights[j];
             }
             numConnectedTracer--;
             break;
@@ -95,5 +90,25 @@ void TracerMeshCell::contain(Tracer *tracer) {
     numContainedTracer++;
 }
 
+void TracerMeshCell::discontain(Tracer *tracer) {
+#ifndef NDEBUG
+    int i = 0;
+    for (; i < numContainedTracer; ++i) {
+        if (containedTracers[i] == tracer) {
+            break;
+        }
+    }
+    assert(i != numContainedTracer);
+#endif
+    for (int i = 0; i < numContainedTracer; ++i) {
+        if (containedTracers[i] == tracer) {
+            for (int j = i+1; j < numContainedTracer; ++j) {
+                containedTracers[j-1] = containedTracers[j];
+            }
+            numContainedTracer--;
+            break;
+        }
+    }
+}
 
 }

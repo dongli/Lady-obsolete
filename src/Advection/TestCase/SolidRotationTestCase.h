@@ -21,7 +21,7 @@ public:
     double getStepSize() const;
 
     void calcInitCond(AdvectionManager &advectionManager);
-    void calcSolution(double time, const TimeLevelIndex<2> &timeIdx,
+    void calcSolution(double dt, const TimeLevelIndex<2> &timeIdx,
                       AdvectionManager &advectionManager);
     void advance(double time, const TimeLevelIndex<2> &timeIdx);
 protected:

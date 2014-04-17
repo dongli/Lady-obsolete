@@ -24,7 +24,7 @@ void SolidRotationTestCase::init(const geomtk::TimeManager &timeManager) {
     // -------------------------------------------------------------------------
     // initialize mesh
     mesh = new geomtk::RLLMesh(*domain);
-    mesh->init(360, 181);
+    mesh->init(240, 121);
     // -------------------------------------------------------------------------
     // initialize velocity
     velocity.create(*mesh, true, HAS_HALF_LEVEL);
@@ -99,10 +99,10 @@ void SolidRotationTestCase::calcSolution(double time,
     REPORT_NOTICE("Overwrite tracers with the true solution.");
 }
 
-void SolidRotationTestCase::calcSolution(double time,
+void SolidRotationTestCase::calcSolution(double dt,
                                          const TimeLevelIndex<2> &timeIdx,
                                          LADY_SCALAR_FIELD &q) {
-    cr0->setCoordComp(0, (*cr0)(0)+angleSpeed*time);
+    cr0->setCoordComp(0, (*cr0)(0)+angleSpeed*dt);
     domain->rotateBack(*axisPole, *c0, *cr0);
     for (int j = 0; j < mesh->getNumGrid(1, FULL); ++j) {
         for (int i = 0; i < mesh->getNumGrid(0, FULL); ++i) {

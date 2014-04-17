@@ -202,7 +202,7 @@ void AdvectionManager::diagnose(const TimeLevelIndex<2> &timeIdx) {
 void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
                                const geomtk::RLLVelocityField &velocity) {
     static clock_t time1, time2;
-    
+
     time1 = clock();
     integrate_RK4(dt, newTimeIdx, velocity);
     time2 = clock();
@@ -217,12 +217,17 @@ void AdvectionManager::advance(double dt, const TimeLevelIndex<2> &newTimeIdx,
     connectTracersAndMesh(newTimeIdx);
     time2 = clock();
     REPORT_NOTICE("connectTracersAndMesh uses " << setw(6) << setprecision(2) << (double)(time2-time1)/CLOCKS_PER_SEC << " seconds.");
-    
+
     time1 = clock();
-    mixTracersIfNecessary(newTimeIdx);
+    splitTracers(newTimeIdx);
     time2 = clock();
-    REPORT_NOTICE("mixTracersIfNecessary uses " << setw(6) << setprecision(2) << (double)(time2-time1)/CLOCKS_PER_SEC << " seconds.");
-    
+    REPORT_NOTICE("splitTracers uses " << setw(6) << setprecision(2) << (double)(time2-time1)/CLOCKS_PER_SEC << " seconds.");
+
+    time1 = clock();
+    mergeTracers(newTimeIdx);
+    time2 = clock();
+    REPORT_NOTICE("mergeTracers uses " << setw(6) << setprecision(2) << (double)(time2-time1)/CLOCKS_PER_SEC << " seconds.");
+
     time1 = clock();
     remapTracersToMesh(newTimeIdx);
     time2 = clock();
@@ -408,7 +413,7 @@ void AdvectionManager::connectTracerAndMesh(const TimeLevelIndex<2> &timeIdx,
     // and set the data structures for both cells and tracers for remapping
     Searcher a(cellTree, NULL, cellCoords,
                tracer->getX(timeIdx).getCartCoord(), true);
-    double longAxisSize = tracer->getShapeSize(timeIdx)(0);
+    double longAxisSize = tracer->getShapeSize(timeIdx)[0];
     mlpack::math::Range r(0.0, longAxisSize);
     vector<vector<size_t> > neighbors;
     vector<vector<double> > distances;
@@ -425,7 +430,27 @@ void AdvectionManager::connectTracerAndMesh(const TimeLevelIndex<2> &timeIdx,
             tracer->connect(cell, f);
         }
     }
-    assert(tracer->getConnectedCells().size() != 0);
+    if (tracer->getConnectedCells().size() == 0) {
+        // tracer has not connect with any cells, so connect with its host cell
+        double weight = ShapeFunction::getMaxValue()/tracer->getDetH(timeIdx);
+        tracer->getHostCell()->connect(tracer, weight);
+        tracer->connect(tracer->getHostCell(), weight);
+        if (tracer->getDetH(timeIdx) < tracer->getHostCell()->getVolume()) {
+            // tracer is not resolved by the mesh
+            tracer->setBadType(Tracer::NOT_RESOLVED);
+        } else {
+#ifndef NDEBUG
+            tracer->outputNeighbors(timeIdx, *domain);
+            CHECK_POINT;
+#endif
+        }
+    } else if (tracer->getBadType() == Tracer::NOT_RESOLVED) {
+#ifndef NDEBUG
+        tracer->outputNeighbors(timeIdx, *domain);
+        CHECK_POINT;
+#endif
+        tracer->setBadType(Tracer::GOOD_SHAPE);
+    }
 }
 
 void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
@@ -439,25 +464,170 @@ void AdvectionManager::connectTracersAndMesh(const TimeLevelIndex<2> &timeIdx) {
     }
 }
 
-void AdvectionManager::mixTracersIfNecessary(const TimeLevelIndex<2> &timeIdx) {
+void AdvectionManager::splitTracers(const TimeLevelIndex<2> &timeIdx) {
     LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();
     for (; tracer != tracerManager.tracers.end(); ++tracer) {
         if ((*tracer)->getBadType() == Tracer::EXTREME_FILAMENTATION) {
 #ifndef NDEBUG
             (*tracer)->outputNeighbors(timeIdx, *domain);
 #endif
-            (*tracer)->mixWithNeighborTracers(timeIdx, *domain);
-            (*tracer)->adjustDeformMatrix(timeIdx);
-            (*tracer)->resetSkeleton(*domain, *mesh, timeIdx);
-            // disconnect from the cells
+            // -----------------------------------------------------------------
+            // add two new tracers to replace the needle tracer
+            Tracer *tracer1 = new Tracer(domain->getNumDim());
+            Tracer *tracer2 = new Tracer(domain->getNumDim());
+            const mat &H = (*tracer)->getH(timeIdx);
+            const mat &U = (*tracer)->getU();
+            const mat &V = (*tracer)->getV();
+            vec S = (*tracer)->getS(); S[0] *= 0.5;
+            // place the two tracers along major axis of the needle tracer
+            static const double scale = 1/sqrt(2.0);
+            LADY_BODY_COORD y(domain->getNumDim());
+            y() = H*V.col(0)*scale;
+            (*tracer)->getSpaceCoord(*domain, timeIdx, y, tracer1->getX(timeIdx));
+            tracer1->getX(timeIdx).transformToCart(*domain);
+            tracer1->getMeshIndex(timeIdx).locate(*mesh, tracer1->getX(timeIdx));
+            tracer1->getH(timeIdx) = U*diagmat(S)*V.t();
+            tracer1->getU() = U;
+            tracer1->getS() = S;
+            tracer1->getV() = V;
+            tracer1->getInvH(timeIdx) = inv(tracer1->getH(timeIdx));
+            tracer1->getDetH(timeIdx) = arma::prod(S);
+            tracer1->updateShapeSize(*domain, timeIdx);
+            tracer1->resetSkeleton(*domain, *mesh, timeIdx);
+            tracerMeshCells(timeIdx, mesh->wrapIndex(tracer1->getMeshIndex(timeIdx), CENTER)).contain(tracer1);
+            connectTracerAndMesh(timeIdx, tracer1);
+            y() = -y();
+            (*tracer)->getSpaceCoord(*domain, timeIdx, y, tracer2->getX(timeIdx));
+            tracer2->getX(timeIdx).transformToCart(*domain);
+            tracer2->getMeshIndex(timeIdx).locate(*mesh, tracer2->getX(timeIdx));
+            tracer2->getH(timeIdx) = tracer1->getH(timeIdx);
+            tracer2->getU() = U;
+            tracer2->getS() = S;
+            tracer2->getV() = V;
+            tracer2->getInvH(timeIdx) = tracer1->getInvH(timeIdx);
+            tracer2->getDetH(timeIdx) = tracer1->getDetH(timeIdx);
+            tracer2->updateShapeSize(*domain, timeIdx);
+            tracer2->resetSkeleton(*domain, *mesh, timeIdx);
+            tracerMeshCells(timeIdx, mesh->wrapIndex(tracer2->getMeshIndex(timeIdx), CENTER)).contain(tracer2);
+            connectTracerAndMesh(timeIdx, tracer2);
+            for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+                tracer1->addSpecies();
+                tracer1->getSpeciesDensity(s) = (*tracer)->getSpeciesDensity(s);
+                tracer1->calcSpeciesMass(timeIdx, s);
+                tracer2->addSpecies();
+                tracer2->getSpeciesDensity(s) = (*tracer)->getSpeciesDensity(s);
+                tracer2->calcSpeciesMass(timeIdx, s);
+            }
+#ifndef NDEBUG
+            tracer1->outputNeighbors(timeIdx, *domain);
+            tracer2->outputNeighbors(timeIdx, *domain);
+#endif
+            tracer1->setID(tracerManager.tracers.size());
+            tracerManager.tracers.push_back(tracer1);
+            tracer2->setID(tracerManager.tracers.size());
+            tracerManager.tracers.push_back(tracer2);
+            REPORT_NOTICE("Long tracer " << (*tracer)->getID() <<
+                          " is split into " << tracer1->getID() << " and " <<
+                          tracer2->getID() << ".");
+            // -----------------------------------------------------------------
+            // disconnect the needle tracer from the cells
             for (int i = 0; i < (*tracer)->getNumConnectedCell(); ++i) {
                 TracerMeshCell *cell = (*tracer)->getConnectedCells()[i];
                 cell->disconnect(*tracer);
             }
-            (*tracer)->resetConnectedCells();
-            connectTracerAndMesh(timeIdx, *tracer);
+            (*tracer)->getHostCell()->discontain(*tracer);
+            tracerManager.tracers.erase(tracer);
         }
     }
+}
+
+void AdvectionManager::mergeTracers(const TimeLevelIndex<2> &timeIdx) {
+    // merge unresolved tracers if possible
+    LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();
+    for (; tracer != tracerManager.tracers.end(); ++tracer) {
+        if ((*tracer)->getBadType() == Tracer::NOT_RESOLVED) {
+            TracerMeshCell *cell = (*tracer)->getHostCell();
+            // -----------------------------------------------------------------
+            // check density difference
+            vector<Tracer*> &tracers = cell->getContainedTracers();
+            vec densityDiff(tracers.size(), arma::fill::zeros);
+            LADY_BODY_COORD y(domain->getNumDim());
+            for (int i = 0; i < tracers.size(); ++i) {
+                if (tracers[i]->getID() != (*tracer)->getID()) {
+                    for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+                        double rho1 = (*tracer)->getSpeciesDensity(s);
+                        double rho2 = tracers[i]->getSpeciesDensity(s);
+                        densityDiff[i] += fabs(rho1-rho2)/rho1;
+                    }
+                } else {
+                    densityDiff[i] = 1.0e33;
+                }
+            }
+            // -----------------------------------------------------------------
+            // merge the unsolved tracer with the tracer whose density
+            // difference is smallest
+            arma::uword i; densityDiff.min(i);
+#ifndef NDEBUG
+            tracers[i]->outputNeighbors(timeIdx, *domain);
+            (*tracer)->outputNeighbors(timeIdx, *domain);
+#endif
+            double volume1 = (*tracer)->getDetH(timeIdx);
+            double volume2 = tracers[i]->getDetH(timeIdx);
+            double volume = volume1+volume2;
+            const mat &U = tracers[i]->getU();
+            const mat &V = tracers[i]->getV();
+            vec &S = tracers[i]->getS();
+            S *= volume/volume2;
+            tracers[i]->getH(timeIdx) = U*diagmat(S)*V.t();
+            tracers[i]->getDetH(timeIdx) = volume;
+            tracers[i]->getInvH(timeIdx) = inv(tracers[i]->getH(timeIdx));
+            for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+                double mass1 = (*tracer)->getSpeciesMass(s);
+                double mass2 = tracers[i]->getSpeciesMass(s);
+                tracers[i]->getSpeciesDensity(s) = (mass1+mass2)/volume;
+                tracers[i]->calcSpeciesMass(timeIdx, s);
+            }
+            REPORT_NOTICE("Small tracer " << (*tracer)->getID() <<
+                          " is merged into " << tracers[i]->getID() << ".");
+            // -----------------------------------------------------------------
+            // disconnect the needle tracer from the cells
+            for (int i = 0; i < (*tracer)->getNumConnectedCell(); ++i) {
+                TracerMeshCell *cell = (*tracer)->getConnectedCells()[i];
+                cell->disconnect(*tracer);
+            }
+            (*tracer)->getHostCell()->discontain(*tracer);
+            tracerManager.tracers.erase(tracer);
+        }
+    }
+    // TEST: Deal with large tracer cluster in the cell
+//    static const double angleThreshold = 10*RAD;
+//    int maxNumContainedTracer = tracerManager.tracers.size()*0.01;
+//    LADY_BODY_COORD y(domain->getNumDim());
+//    for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+//        TracerMeshCell &cell = tracerMeshCells(timeIdx, i);
+//        if (cell.getNumContainedTracer() > maxNumContainedTracer) {
+//            vector<Tracer*> &tracers = cell.getContainedTracers();
+//            vec angles(tracers.size());
+//            for (int j = 0; j < cell.getNumContainedTracer(); ++j) {
+//                mat R = tracers[j]->getU()*tracers[j]->getV();
+//                angles[j] = acos(R(0, 0));
+//                cout << angles[j]/RAD << endl;
+//            }
+//            for (int j = 0; j < cell.getNumContainedTracer(); ++j) {
+//                for (int k = 0; k < cell.getNumContainedTracer(); ++k) {
+//                    if (j != k) {
+//                        if (fabs(angles[j]-angles[k]) < angleThreshold) {
+//                            tracers[j]->outputNeighbors(timeIdx, *domain);
+//                            tracers[k]->outputNeighbors(timeIdx, *domain);
+//                            CHECK_POINT;
+//                        }
+//                    }
+//                }
+//            }
+//            REPORT_ERROR("Cell " << i << " contains too many tracers (" <<
+//                         cell.getNumContainedTracer() <<")!");
+//        }
+//    }
 }
 
 void AdvectionManager::remapMeshToTracers(const TimeLevelIndex<2> &timeIdx) {
@@ -465,16 +635,16 @@ void AdvectionManager::remapMeshToTracers(const TimeLevelIndex<2> &timeIdx) {
     for (; tracer != tracerManager.tracers.end(); ++tracer) {
         (*tracer)->resetSpecies();
         const vector<TracerMeshCell*> &cells = (*tracer)->getConnectedCells();
-        assert(cells.size() != 0);
+        double totalWeight = 0;
         for (int i = 0; i < (*tracer)->getNumConnectedCell(); ++i) {
-            double weight = cells[i]->getRemapWeight(*tracer)/
-                            (*tracer)->getTotalRemapWeight();
+            double weight = cells[i]->getRemapWeight(*tracer)*cells[i]->getVolume();
+            totalWeight += weight;
             for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
-                double &rho = (*tracer)->getSpeciesDensity(s);
-                rho += cells[i]->getSpeciesDensity(s)*weight;
+                (*tracer)->getSpeciesDensity(s) += cells[i]->getSpeciesDensity(s)*weight;
             }
         }
         for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+            (*tracer)->getSpeciesDensity(s) /= totalWeight;
             (*tracer)->calcSpeciesMass(timeIdx, s);
         }
     }
@@ -482,19 +652,33 @@ void AdvectionManager::remapMeshToTracers(const TimeLevelIndex<2> &timeIdx) {
 
 void AdvectionManager::remapTracersToMesh(const TimeLevelIndex<2> &timeIdx) {
     for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
-        tracerMeshCells(timeIdx, i).resetSpecies();
-    }
-    LADY_LIST<Tracer*>::iterator tracer = tracerManager.tracers.begin();
-    for (; tracer != tracerManager.tracers.end(); ++tracer) {
-        vector<TracerMeshCell*> &cells = (*tracer)->getConnectedCells();
-        for (int i = 0; i < (*tracer)->getNumConnectedCell(); ++i) {
-            double weight = cells[i]->getRemapWeight(*tracer)/
-                            cells[i]->getTotalRemapWeight();
+        TracerMeshCell &cell = tracerMeshCells(timeIdx, i);
+        cell.resetSpecies();
+        if (cell.getNumConnectedTracer() == 0) {
+            cell.getCoord().print();
+            REPORT_ERROR("Mesh cell " << i << " has no connected tracers!");
+        };
+        vector<Tracer*> &tracers = cell.getConnectedTracers();
+        double totalWeight = 0;
+        for (int j = 0; j < cell.getNumConnectedTracer(); ++j) {
+            double weight = cell.getRemapWeight(tracers[j])*tracers[j]->getDetH(timeIdx);
+            totalWeight += weight;
             for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
-                double &rho = cells[i]->getSpeciesDensity(s);
-                rho += (*tracer)->getSpeciesDensity(s)*weight;
+                cell.getSpeciesDensity(s) += tracers[j]->getSpeciesDensity(s)*weight;
             }
         }
+        for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
+            cell.getSpeciesDensity(s) /= totalWeight;
+        }
+//        if (cell.getID() == 8948) {
+//            for (int j = 0; j < cell.getNumConnectedTracer(); ++j) {
+//                double weight = cell.getRemapWeight(tracers[j])*tracers[j]->getDetH(timeIdx)/totalWeight;
+//                cout << setw(8) << tracers[j]->getID();
+//                cout << setw(40) << tracers[j]->getSpeciesDensity(0);
+//                cout << setw(40) << weight;
+//                cout << setw(40) << cell.getSpeciesDensity(0) << endl;
+//            }
+//        }
     }
     correctTotalMassOnMesh(timeIdx);
 }

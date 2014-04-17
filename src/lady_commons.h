@@ -25,6 +25,7 @@ using arma::vec;
 using arma::mat;
 using arma::cube;
 using arma::sp_mat;
+using arma::svd;
 
 using geomtk::RAD;
 using geomtk::PI2;

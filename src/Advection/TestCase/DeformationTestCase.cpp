@@ -24,7 +24,34 @@ void DeformationTestCase::init(const geomtk::TimeManager &timeManager) {
     // -------------------------------------------------------------------------
     // initialize mesh
     mesh = new geomtk::RLLMesh(*domain);
-    mesh->init(360, 181);
+    int numLon = 240;
+    vec fullLon(numLon), halfLon(numLon);
+    double dlon = 2.0*M_PI/numLon;
+    for (int i = 0; i < numLon; ++i) {
+        fullLon[i] = i*dlon;
+        halfLon[i] = i*dlon+dlon*0.5;
+    }
+    mesh->setGridCoords(0, numLon, fullLon, halfLon);
+    int numLat = 121;
+    vec fullLat(numLat), halfLat(numLat-1);
+        // NOTE: Since the velocity interpolation within polar cap is inaccurate in
+        //       deformational flow, we set the second and last second latitude very
+        //       near to Poles by the parameter 'lat0' (distance from Poles).
+    double lat0 = 0.1*RAD;
+    double dlat = (M_PI-lat0*2)/(numLat-2-1);
+    for (int j = 1; j < numLat-1; ++j) {
+        fullLat[j] = (j-1)*dlat-M_PI_2+lat0;
+    }
+    fullLat[0] = -M_PI_2;
+    fullLat[numLat-1] = M_PI_2;
+    for (int j = 1; j < numLat-2; ++j) {
+        halfLat[j] = dlat*0.5+(j-1)*dlat-M_PI_2+lat0;
+    }
+    halfLat[0] = -M_PI_2+lat0*0.5;
+    halfLat[numLat-2] = M_PI_2-lat0*0.5;
+    mesh->setGridCoords(1, numLat, fullLat, halfLat);
+    mesh->setCellVolumes();
+//    mesh->init(240, 121);
     // -------------------------------------------------------------------------
     // initialize velocity
     velocity.create(*mesh, true, HAS_HALF_LEVEL);

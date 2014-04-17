@@ -8,23 +8,12 @@ begin
 
     PI = atan(1.0)*4
     RAD = PI/180
-    centroid = centroid/RAD
-    ngb_cells = ngb_cells/RAD
-    ngb_tracers = ngb_tracers/RAD
-    shape = shape/RAD
-
-    dims = dimsizes(ngb_cells)
-    num_ngb_cell = dims(0)
-
-    dims = dimsizes(ngb_tracers)
-    num_ngb_tracer = dims(0)
-
-    dims = dimsizes(shape)
-    num_shape = dims(0)
+    point_size = 0.005
+    satellite_angle = 2.0
 
     wks = gsn_open_wks("pdf", "neighbors")
 
-    satellite_angle = 8.0
+    centroid = centroid/RAD
 
     res_map = True
     res_map@gsnMaximize = False
@@ -38,43 +27,60 @@ begin
     res_map@mpRightAngleF = satellite_angle
     res_map@mpTopAngleF = satellite_angle
     res_map@mpBottomAngleF = satellite_angle
-
     map = gsn_csm_map(wks, res_map)
 
-    point_size = 0.008
+    ; --------------------------------------------------------------------------
+    ; plot neighboring cells
+    if (isdefined("ngb_cells")) then
+        ngb_cells = ngb_cells/RAD
+        dims = dimsizes(ngb_cells)
+        num_ngb_cell = dims(0)
+        res_ngb_cells = True
+        res_ngb_cells@gsMarkerIndex = 16
+        res_ngb_cells@gsMarkerColor = "red"
+        res_ngb_cells@gsMarkerSizeF = point_size
+        do i = 0, num_ngb_cell-1
+            gsn_polymarker(wks, map, ngb_cells(i,0), ngb_cells(i,1), res_ngb_cells)
+        end do
+    end if
 
-    res_centroid = True
-    res_centroid@gsMarkerIndex = 16
-    res_centroid@gsMarkerSizeF = point_size
+    ; --------------------------------------------------------------------------
+    ; plot neighboring tracers
+    ; if (isdefined("ngb_tracers")) then
+    ;     ngb_tracers = ngb_tracers/RAD
+    ;     dims = dimsizes(ngb_tracers)
+    ;     num_ngb_tracer = dims(0)
+    ;     res_ngb_tracers = True
+    ;     res_ngb_tracers@gsMarkerIndex = 5
+    ;     res_ngb_tracers@gsMarkerColor = "magenta"
+    ;     res_ngb_tracers@gsMarkerSizeF = point_size
+    ;     do i = 0, num_ngb_tracer-1
+    ;         gsn_polymarker(wks, map, ngb_tracers(i,0), ngb_tracers(i,1), res_ngb_tracers)
+    ;     end do
+    ; end if
 
-    res_ngb_cells = True
-    res_ngb_cells@gsMarkerIndex = 16
-    res_ngb_cells@gsMarkerColor = "red"
-    res_ngb_cells@gsMarkerSizeF = point_size
-
-    res_ngb_tracers = True
-    res_ngb_tracers@gsMarkerIndex = 5
-    res_ngb_tracers@gsMarkerColor = "magenta"
-    res_ngb_tracers@gsMarkerSizeF = point_size
-
+    ; --------------------------------------------------------------------------
+    ; plot parcel shape
+    shape = shape/RAD
     res_shape = True
     res_shape@gsMarkerIndex = 16
-    res_shape@gsMarkerColor = "blue"
-    res_shape@gsLineColor = "blue"
-    res_shape@gsMarkerSizeF = point_size
-    res_shape@gsLineThicknessF = 2
-
-    do i = 0, num_ngb_cell-1
-        gsn_polymarker(wks, map, ngb_cells(i,0), ngb_cells(i,1), res_ngb_cells)
-    end do
-    do i = 0, num_ngb_tracer-1
-        gsn_polymarker(wks, map, ngb_tracers(i,0), ngb_tracers(i,1), res_ngb_tracers)
-    end do
-    ; do i = 0, num_shape-1
-    ;     gsn_polymarker(wks, map, shape(i,0), shape(i,1), res_shape)
-    ; end do
+    res_shape@gsLineColor = "black"
+    res_shape@gsLineThicknessF = 1
     gsn_polyline(wks, map, shape(:,0), shape(:,1), res_shape)
+
+    ; --------------------------------------------------------------------------
+    ; plot centroid
+    res_centroid = True
+    res_centroid@gsMarkerIndex = 5
+    res_centroid@gsMarkerSizeF = point_size
     gsn_polymarker(wks, map, centroid(0), centroid(1), res_centroid)
+
+    res_centroid@gsMarkerColor = "green"
+    gsn_polymarker(wks, map, 102, -35.04576271, res_centroid)
+
+    ; res_centroid@gsMarkerColor = "green"
+    ; gsn_polymarker(wks, map,  207.8210443164,      -88.5145180883, res_centroid)
+    ; gsn_polymarker(wks, map,  354.3267634360,      -89.6831176477, res_centroid)
 
     frame(wks)
 

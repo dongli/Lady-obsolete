@@ -42,12 +42,6 @@ begin
     res_x = True
     res_x@gsLineThicknessF = 3
 
-    res_x@gsLineColor = "black"
-    do i = 0, n-1
-        x(i,:) = H(0,:,:)#(/cos(i*dtheta),sin(i*dtheta)/)
-    end do
-    plot_x0 = gsn_add_polyline(wks, plot_bg, x(:,0), x(:,1), res_x)
-
     res_x@gsLineColor = "gray"
     do i = 0, n-1
         x(i,:) = H(1,:,:)#(/cos(i*dtheta),sin(i*dtheta)/)
@@ -71,6 +65,12 @@ begin
         x(i,:) = H(4,:,:)#(/cos(i*dtheta),sin(i*dtheta)/)
     end do
     plot_x4 = gsn_add_polyline(wks, plot_bg, x(:,0), x(:,1), res_x)
+
+    res_x@gsLineColor = "black"
+    do i = 0, n-1
+        x(i,:) = H(0,:,:)#(/cos(i*dtheta),sin(i*dtheta)/)
+    end do
+    plot_x0 = gsn_add_polyline(wks, plot_bg, x(:,0), x(:,1), res_x)
 
     draw(plot_bg)
     frame(wks)

@@ -32,7 +32,7 @@ begin
 
     res_map = True
     res_map@gsnFrame = False
-    res_map@mpCenterLonF = 180
+    res_map@mpCenterLonF = 180.0
     res_map@mpOutlineOn = False
 
     res_tracer = True
@@ -62,8 +62,8 @@ begin
         ; res_map@mpMaxLatF = -70
         ; if (isdefined("check")) then
         ;     res_map@mpProjection = "Satellite"
-        ;     res_map@mpCenterLonF = f->c(check(0),0)/RAD
-        ;     res_map@mpCenterLatF = f->c(check(0),1)/RAD
+        ;     res_map@mpCenterLonF = doubletofloat(f->c(check(0),0)/RAD)
+        ;     res_map@mpCenterLatF = doubletofloat(f->c(check(0),1)/RAD)
         ;     res_map@mpLimitMode = "Angles"
         ;     res_map@mpLeftAngleF = 2.0
         ;     res_map@mpRightAngleF = res_map@mpLeftAngleF

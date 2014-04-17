@@ -16,7 +16,6 @@ protected:
     int numConnectedTracer;
     vector<Tracer*> connectedTracers;
     vector<double> remapWeights;
-    double totalRemapWeight;
     // mixing parameters
     int numContainedTracer;
     vector<Tracer*> containedTracers;
@@ -95,18 +94,18 @@ public:
     void connect(Tracer *tracer, double weight);
 
     void disconnect(Tracer *tracer);
-    
+
     int getNumConnectedTracer() const { return numConnectedTracer; }
-    
+
     vector<Tracer*>& getConnectedTracers() { return connectedTracers; }
 
     double getRemapWeight(Tracer *tracer) const;
 
-    double getTotalRemapWeight() const { return totalRemapWeight; }
-
     void resetContainedTracers();
 
     void contain(Tracer *tracer);
+
+    void discontain(Tracer *tracer);
 
     int getNumContainedTracer() const { return numContainedTracer; }
 

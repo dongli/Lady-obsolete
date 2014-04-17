@@ -16,7 +16,7 @@ class TracerMeshCell;
 class Tracer : public Parcel {
 public:
     enum BadDeformMatrixType {
-        GOOD_SHAPE, EXTREME_FILAMENTATION
+        GOOD_SHAPE, EXTREME_FILAMENTATION, NOT_RESOLVED
     };
 protected:
     vector<double> density; //>! species density array
@@ -28,12 +28,7 @@ protected:
      */
     int numConnectedCell;
     vector<TracerMeshCell*> connectedCells;
-    double totalRemapWeight;
-    /**
-     *  Mixing parameters
-     */
-    mat U, V;
-    vec s;
+
     TracerMeshCell *hostCell;
 public:
     Tracer(int numDim);
@@ -68,6 +63,10 @@ public:
         mass[speciesIdx] = density[speciesIdx]*detH.getLevel(timeIdx);
     }
 
+    double getSpeciesMass(int speciesIdx) {
+        return mass[speciesIdx];
+    }
+    
     void resetSpecies() {
         for (int s = 0; s < density.size(); ++s) {
             density[s] = 0.0;
@@ -93,7 +92,9 @@ public:
      *  @return The skeleton object.
      */
     TracerSkeleton& getSkeleton() { return *skeleton; }
-    
+
+    void setBadType(BadDeformMatrixType badType) { this->badType = badType; }
+
     BadDeformMatrixType getBadType() const { return badType; }
 
     /**
@@ -118,14 +119,9 @@ public:
     
     int getNumConnectedCell() const { return numConnectedCell; }
 
-    double getTotalRemapWeight() const {
-#ifndef NDEBUG
-        assert(totalRemapWeight != 0.0);
-#endif
-        return totalRemapWeight;
-    }
-
     void setHostCell(TracerMeshCell *cell) { hostCell = cell; }
+    
+    TracerMeshCell* getHostCell() const { return hostCell; }
 
     /**
      *  Update deformation matrix from tracer skeleton.
@@ -136,11 +132,6 @@ public:
     void updateDeformMatrix(const LADY_DOMAIN &domain,
                             const LADY_MESH &mesh,
                             const TimeLevelIndex<2> &timeIdx);
-
-    void mixWithNeighborTracers(const TimeLevelIndex<2> &timeIdx,
-                                const LADY_DOMAIN &domain);
-
-    void adjustDeformMatrix(const TimeLevelIndex<2> &timeIdx);
 
     void resetSkeleton(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
                        const TimeLevelIndex<2> &timeIdx);

@@ -72,11 +72,11 @@ public:
      *  Calculate the solution of the test case if any, and reset the tracers
      *  for latter outputting.
      *
-     *  @param time             the time in seconds.
+     *  @param dt               the time step size in seconds.
      *  @param timeIdx          the time level index.
      *  @param advectionManager the advection manager.
      */
-    virtual void calcSolution(double time, const TimeLevelIndex<2> &timeIdx,
+    virtual void calcSolution(double dt, const TimeLevelIndex<2> &timeIdx,
                               AdvectionManager &advectionManager);
 protected:
     /**

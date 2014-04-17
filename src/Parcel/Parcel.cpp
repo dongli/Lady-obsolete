@@ -75,17 +75,12 @@ void Parcel::updateShapeSize(const LADY_DOMAIN &domain,
                              const TimeLevelIndex<2> &timeIdx) {
     LADY_BODY_COORD y(domain.getNumDim());
     LADY_SPACE_COORD x(domain.getNumDim());
-    if (domain.getNumDim() == 2) {
-        y(0) = 1.0; y(1) = 0.0;
+    vec Y(domain.getNumDim());
+    for (int m = 0; m < domain.getNumDim(); ++m) {
+        Y = (*H.getLevel(timeIdx))*V.col(m);
+        y() = (*invH.getLevel(timeIdx))*Y;
         getSpaceCoord(domain, timeIdx, y, x);
-        double d1 = domain.calcDistance(x, *(q.getLevel(timeIdx)));
-        y(0) = 0.0; y(1) = 1.0;
-        getSpaceCoord(domain, timeIdx, y, x);
-        double d2 = domain.calcDistance(x, *(q.getLevel(timeIdx)));
-        shapeSize.getLevel(timeIdx)(0) = fmax(d1, d2);
-        shapeSize.getLevel(timeIdx)(1) = fmin(d1, d2);
-    } else {
-        REPORT_ERROR("Under construction!");
+        shapeSize.getLevel(timeIdx)[m] = domain.calcDistance(x, *q.getLevel(timeIdx));
     }
 }
 

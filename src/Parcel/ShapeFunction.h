@@ -13,8 +13,10 @@ public:
     static vec weights;
 private:
     static const LADY_DOMAIN *domain;
+    static double maxValue;
 public:
     static void init(const LADY_DOMAIN &domain);
+    static double getMaxValue() { return maxValue; }
     static void evalFunc(const LADY_BODY_COORD& y, double &f);
     static void evalDerv(const LADY_BODY_COORD& y, vec &d);
 

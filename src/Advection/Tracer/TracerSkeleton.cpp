@@ -20,6 +20,15 @@ TracerSkeleton::TracerSkeleton(Tracer *host, int numDim) {
     for (int i = 0; i < y.size(); ++i) {
         y[i] = new LADY_BODY_COORD(numDim);
     }
+    double d = 1;
+    if (numDim == 2) {
+        (*y[0])() <<  -d << 0.0 << arma::endr;
+        (*y[1])() << 0.0 <<  -d << arma::endr;
+        (*y[2])() <<   d << 0.0 << arma::endr;
+        (*y[3])() << 0.0 <<   d << arma::endr;
+    } else if (numDim == 3) {
+        REPORT_ERROR("Under construction!");
+    }
 }
 
 TracerSkeleton::~TracerSkeleton() {
@@ -69,11 +78,6 @@ void TracerSkeleton::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
     TimeLevelIndex<2> initTimeIdx;
     const LADY_SPACE_COORD &x0 = host->getX(initTimeIdx);
     if (domain.getNumDim() == 2) {
-        double d = 0.5;
-        (*y[0])() <<  -d << 0.0 << arma::endr;
-        (*y[1])() << 0.0 <<  -d << arma::endr;
-        (*y[2])() <<   d << 0.0 << arma::endr;
-        (*y[3])() << 0.0 <<   d << arma::endr;
         double dtheta = PI2/y.size();
 #ifdef LADY_USE_SPHERE_DOMAIN
         double lon, lat = M_PI_2-size/domain.getRadius();
