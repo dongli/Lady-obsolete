@@ -91,10 +91,10 @@ void SolidRotationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     AdvectionTestCase::calcInitCond(advectionManager);
 }
 
-void SolidRotationTestCase::calcSolution(double time,
+void SolidRotationTestCase::calcSolution(double dt,
                                          const TimeLevelIndex<2> &timeIdx,
                                          AdvectionManager &advectionManager) {
-    calcSolution(time, timeIdx, *q.front());
+    calcSolution(dt, timeIdx, *q.front());
     advectionManager.input(timeIdx, q);
     REPORT_NOTICE("Overwrite tracers with the true solution.");
 }

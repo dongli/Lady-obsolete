@@ -11,7 +11,7 @@ public:
         CASE1, CASE2, CASE3, CASE4
     };
     enum InitCond {
-        COSINE_HILL, GAUSSIAN_HILL, SLOTTED_CYLINDERS
+        COSINE_HILLS, GAUSSIAN_HILLS, SLOTTED_CYLINDERS
     };
 protected:
     double period;

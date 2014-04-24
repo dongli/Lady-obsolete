@@ -4,17 +4,19 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 
 begin
 
-    start_time = 0
-    end_time = 100
+    run_type = "Release"
+    time_stamp = "%4.4d"
+    start_time = 210
+    end_time = 222
     time_step = 1
-    file_prefix = "tracers.deform.240x120"
+    file_prefix = "tracers.deform.gh.120x60"
 
     PI = atan(1.0)*4
     RAD = PI/180
 
     fs = systemfunc("for (( i = "+start_time+"; i <= "+end_time+"; "+ \
         "i = i+"+time_step+" )); "+ \
-        "do printf '../build/Debug/"+file_prefix+".%3.3d.nc\n' $i; done")
+        "do printf '../build/"+run_type+"/"+file_prefix+"."+time_stamp+".nc\n' $i; done")
 
     f = addfile(fs(0), "r")
 

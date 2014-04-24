@@ -24,6 +24,13 @@ private:
     LADY_MATRIX cellCoords;         //>! collection of cell space coordinates
     vector<size_t> cellCoordsMap;   //>! mapping for cells since tree building
                                     //>! will modify the order of cells
+    // some array recording objects need to be processed
+    int numLongTracer;
+    vector<list<Tracer*>::iterator> longTracers;
+    int numUnresolvedTracer;
+    vector<list<Tracer*>::iterator> unresolvedTracers;
+    int numVoidCell;
+    vector<TracerMeshCell*> voidCells;
 public:
     AdvectionManager();
     ~AdvectionManager();
@@ -101,7 +108,8 @@ private:
 
     void embedTracersIntoMesh(const TimeLevelIndex<2> &timeIdx);
 
-    void connectTracerAndMesh(const TimeLevelIndex<2> &timeIdx, Tracer *tracer);
+    void connectTracerAndMesh(const TimeLevelIndex<2> &timeIdx,
+                              list<Tracer*>::iterator &tracer);
 
     /**
      *  Prepare the bidirectional remapping between tracers and mesh. Find out
@@ -114,6 +122,8 @@ private:
     void splitTracers(const TimeLevelIndex<2> &timeIdx);
     
     void mergeTracers(const TimeLevelIndex<2> &timeIdx);
+
+    void handleVoidCells(const TimeLevelIndex<2> &timeIdx);
 
     /**
      *  Remap the tracer mass from mesh cells to tracers.

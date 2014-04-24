@@ -41,7 +41,11 @@ begin
     wks = gsn_open_wks("pdf", file_prefix2+".error")
 
     res = True
+    res@gsnMaximize = True
+    res@vpWidthF = 0.8
+    res@vpHeightF = 0.4
     res@xyLineThicknessF = 3
+    res@xyLineColor = "green"
     res@xyDashPatterns = (/0,1,2/)
     res@trXMinF = 0
     res@trXMaxF = 576
@@ -51,6 +55,10 @@ begin
     res@tmXBTickEndF = 576
     res@tmYLTickStartF = 0
     res@tmYLTickEndF = 0.1
+    res@tmXMajorGrid = True
+    res@tmXMajorGridLineDashPattern = 14
+    res@tmYMajorGrid = True
+    res@tmYMajorGridLineDashPattern = 14
 
     plot = gsn_csm_xy(wks, ispan(0, num_time-1, 1), errors, res)
 

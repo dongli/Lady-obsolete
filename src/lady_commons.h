@@ -20,6 +20,7 @@ using std::setprecision;
 using std::string;
 using std::vector;
 using std::list;
+using std::find;
 
 using arma::vec;
 using arma::mat;

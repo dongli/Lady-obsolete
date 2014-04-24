@@ -24,34 +24,7 @@ void DeformationTestCase::init(const geomtk::TimeManager &timeManager) {
     // -------------------------------------------------------------------------
     // initialize mesh
     mesh = new geomtk::RLLMesh(*domain);
-    int numLon = 240;
-    vec fullLon(numLon), halfLon(numLon);
-    double dlon = 2.0*M_PI/numLon;
-    for (int i = 0; i < numLon; ++i) {
-        fullLon[i] = i*dlon;
-        halfLon[i] = i*dlon+dlon*0.5;
-    }
-    mesh->setGridCoords(0, numLon, fullLon, halfLon);
-    int numLat = 121;
-    vec fullLat(numLat), halfLat(numLat-1);
-        // NOTE: Since the velocity interpolation within polar cap is inaccurate in
-        //       deformational flow, we set the second and last second latitude very
-        //       near to Poles by the parameter 'lat0' (distance from Poles).
-    double lat0 = 0.1*RAD;
-    double dlat = (M_PI-lat0*2)/(numLat-2-1);
-    for (int j = 1; j < numLat-1; ++j) {
-        fullLat[j] = (j-1)*dlat-M_PI_2+lat0;
-    }
-    fullLat[0] = -M_PI_2;
-    fullLat[numLat-1] = M_PI_2;
-    for (int j = 1; j < numLat-2; ++j) {
-        halfLat[j] = dlat*0.5+(j-1)*dlat-M_PI_2+lat0;
-    }
-    halfLat[0] = -M_PI_2+lat0*0.5;
-    halfLat[numLat-2] = M_PI_2-lat0*0.5;
-    mesh->setGridCoords(1, numLat, fullLat, halfLat);
-    mesh->setCellVolumes();
-//    mesh->init(240, 121);
+    mesh->init(180, 91);
     // -------------------------------------------------------------------------
     // initialize velocity
     velocity.create(*mesh, true, HAS_HALF_LEVEL);
@@ -155,17 +128,17 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     LADY_SCALAR_FIELD *q0, *q1;
     TimeLevelIndex<2> timeIdx;
     LADY_SPACE_COORD c0(2), c1(2);
-    c0.setCoord(M_PI*5.0/6.0, 0.0);
-    c1.setCoord(M_PI*7.0/6.0, 0.0);
-    if (initCond == COSINE_HILL) {
-        
+    c0.setCoord(M_PI*5.0/6.0, 0.0); c0.transformToCart(*domain);
+    c1.setCoord(M_PI*7.0/6.0, 0.0); c1.transformToCart(*domain);
+    // reference tracer
+    q.push_back(new LADY_SCALAR_FIELD); q0 = q.back();
+    q0->create("", "", "", *mesh, CENTER);
+    for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+        (*q0)(timeIdx, i) = 1.0;
+    }
+    if (initCond == COSINE_HILLS) {
+        REPORT_ERROR("Under construction!");
     } else if (initCond == SLOTTED_CYLINDERS) {
-        // reference tracer
-        q.push_back(new LADY_SCALAR_FIELD); q0 = q.back();
-        q0->create("", "", "", *mesh, CENTER);
-        for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
-            (*q0)(timeIdx, i) = 1.0;
-        }
         // test tracer
         q.push_back(new LADY_SCALAR_FIELD); q1 = q.back();
         q1->create("", "", "", *mesh, CENTER);
@@ -187,8 +160,18 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
             else
                 (*q1)(timeIdx, i) = b;
         }
-    } else if (initCond == GAUSSIAN_HILL) {
-        REPORT_ERROR("Under construction!");
+    } else if (initCond == GAUSSIAN_HILLS) {
+        q.push_back(new LADY_SCALAR_FIELD); q1 = q.back();
+        q1->create("", "", "", *mesh, CENTER);
+        double hmax = 0.95, b = 5.0;
+        for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+            LADY_SPACE_COORD x(2);
+            mesh->getGridCoord(i, CENTER, x);
+            x.transformToCart(*domain);
+            vec d0 = x.getCartCoord()-c0.getCartCoord();
+            vec d1 = x.getCartCoord()-c1.getCartCoord();
+            (*q1)(timeIdx, i) = hmax*(exp(-b*dot(d0, d0))+exp(-b*dot(d1, d1)));
+        }
     }
     AdvectionTestCase::calcInitCond(advectionManager);
 }

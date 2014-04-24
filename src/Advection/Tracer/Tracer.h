@@ -63,10 +63,14 @@ public:
         mass[speciesIdx] = density[speciesIdx]*detH.getLevel(timeIdx);
     }
 
-    double getSpeciesMass(int speciesIdx) {
+    double& getSpeciesMass(int speciesIdx) {
         return mass[speciesIdx];
     }
-    
+
+    double getSpeciesMass(int speciesIdx) const {
+        return mass[speciesIdx];
+    }
+
     void resetSpecies() {
         for (int s = 0; s < density.size(); ++s) {
             density[s] = 0.0;

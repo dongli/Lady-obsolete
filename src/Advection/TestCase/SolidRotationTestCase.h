@@ -25,7 +25,7 @@ public:
                       AdvectionManager &advectionManager);
     void advance(double time, const TimeLevelIndex<2> &timeIdx);
 protected:
-    void calcSolution(double time, const TimeLevelIndex<2> &timeIdx,
+    void calcSolution(double dt, const TimeLevelIndex<2> &timeIdx,
                       LADY_SCALAR_FIELD &q);
 };
 

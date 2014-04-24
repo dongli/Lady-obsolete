@@ -12,6 +12,7 @@ protected:
     LADY_SPACE_COORD *x;    //>! center grid coordinate
     double volume;          //>! cell volume for converting density and mass
     vector<double> density; //>! species density array
+    vector<double> mass;    //>! species mass array
     // remapping parameters
     int numConnectedTracer;
     vector<Tracer*> connectedTracers;
@@ -58,7 +59,7 @@ public:
     /**
      *  Add a species.
      */
-    void addSpecies() { density.push_back(0); }
+    void addSpecies() { density.push_back(0); mass.push_back(0); }
 
     double& getSpeciesDensity(int speciesIdx) {
 #ifndef NDEBUG
@@ -80,9 +81,18 @@ public:
         return density[speciesIdx];
     }
 
+    double& getSpeciesMass(int speciesIdx) {
+        return mass[speciesIdx];
+    }
+
+    double getSpeciesMass(int speciesIdx) const {
+        return mass[speciesIdx];
+    }
+
     void resetSpecies() {
         for (int s = 0; s < density.size(); ++s) {
             density[s] = 0;
+            mass[s] = 0;
         }
     }
 
