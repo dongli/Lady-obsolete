@@ -82,7 +82,7 @@ void DeformationTestCase::advance(double time,
             }
         }
     } else if (subCase == CASE3) {
-        k = 1.0;
+        k = 5.0*R/period;
         for (int j = 0; j < mesh->getNumGrid(1, velocity(0).getGridType(1)); ++j) {
             for (int i = 0; i < mesh->getNumGrid(0, velocity(0).getGridType(0)); ++i) {
                 double lon = mesh->getGridCoordComp(0, velocity(0).getGridType(0), i);
@@ -133,18 +133,30 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
     // reference tracer
     q.push_back(new LADY_SCALAR_FIELD); q0 = q.back();
     q0->create("", "", "", *mesh, CENTER);
+    // test tracer
+    q.push_back(new LADY_SCALAR_FIELD); q1 = q.back();
+    q1->create("", "", "", *mesh, CENTER);
+    LADY_SPACE_COORD x(2);
     for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
         (*q0)(timeIdx, i) = 1.0;
     }
     if (initCond == COSINE_HILLS) {
-        REPORT_ERROR("Under construction!");
+        double hmax = 1, r = domain->getRadius()*0.5, b = 0.1, c = 0.9;
+        for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+            mesh->getGridCoord(i, CENTER, x);
+            double r0 = domain->calcDistance(x, c0);
+            double r1 = domain->calcDistance(x, c1);
+            if (r0 < r) {
+                (*q1)(timeIdx, i) = b+c*hmax*0.5*(1+cos(M_PI*r0/r));
+            } else if (r1 < r) {
+                (*q1)(timeIdx, i) = b+c*hmax*0.5*(1+cos(M_PI*r1/r));
+            } else {
+                (*q1)(timeIdx, i) = b;
+            }
+        }
     } else if (initCond == SLOTTED_CYLINDERS) {
-        // test tracer
-        q.push_back(new LADY_SCALAR_FIELD); q1 = q.back();
-        q1->create("", "", "", *mesh, CENTER);
         double b = 0.1, c = 1.0, r = 0.5;
         for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
-            LADY_SPACE_COORD x(2);
             mesh->getGridCoord(i, CENTER, x);
             double r0 = domain->calcDistance(x, c0);
             double r1 = domain->calcDistance(x, c1);
@@ -161,11 +173,8 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
                 (*q1)(timeIdx, i) = b;
         }
     } else if (initCond == GAUSSIAN_HILLS) {
-        q.push_back(new LADY_SCALAR_FIELD); q1 = q.back();
-        q1->create("", "", "", *mesh, CENTER);
         double hmax = 0.95, b = 5.0;
         for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
-            LADY_SPACE_COORD x(2);
             mesh->getGridCoord(i, CENTER, x);
             x.transformToCart(*domain);
             vec d0 = x.getCartCoord()-c0.getCartCoord();

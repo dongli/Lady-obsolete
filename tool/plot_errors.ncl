@@ -29,7 +29,7 @@ begin
         f1 = addfile(fs1(l), "r")
         f2 = addfile(fs2(l), "r")
 
-        dq = abs(f1->q0-f2->q0)
+        dq = abs(f1->q1/f1->q0-f2->q1/f2->q0)
         errors(0,l) = sum(dq*f1->volume)/sum(abs(f1->q0)*f1->volume)
         errors(1,l) = sqrt(sum(dq^2*f1->volume)/sum(f1->q0^2*f1->volume))
         errors(2,l) = max(dq*f1->volume)/max(abs(f1->q0)*f1->volume)

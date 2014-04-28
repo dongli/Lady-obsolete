@@ -22,10 +22,12 @@ begin
 
     wks = gsn_open_wks("pdf", file_prefix+".cells")
 
-    if (test_case .eq. "rotation" .or. isStrSubset(test_case, "deform.gh")) then
+    if (test_case .eq. "rotation" .or. \
+        isStrSubset(test_case, "deform.gh")) then
         gsn_define_colormap(wks, "WhBlGrYeRe")
     end if
-    if (isStrSubset(test_case, "deform.sc")) then
+    if (isStrSubset(test_case, "deform.sc") .or. \
+        isStrSubset(test_case, "deform.ch")) then
         cmap = (/(/1.0, 1.0, 1.0 /),(/0.0, 0.0, 0.0 /), \
                  (/0.84,0.84,1.0 /),(/0.38,0.4, 0.98/), \
                  (/0.04,0.15,0.89/),(/0.06,0.4, 0.46/), \
@@ -50,7 +52,8 @@ begin
         res@cnMaxLevelValF = 1000.0
         res@cnLevelSpacingF = 50.0
     end if
-    if (isStrSubset(test_case, "deform.sc")) then
+    if (isStrSubset(test_case, "deform.sc") .or. \
+        isStrSubset(test_case, "deform.ch")) then
         res@cnMinLevelValF = 0.2
         res@cnMaxLevelValF = 0.9
         res@cnLevelSpacingF = 0.1
