@@ -141,18 +141,26 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
         (*q0)(timeIdx, i) = 1.0;
     }
     if (initCond == COSINE_HILLS) {
-        double hmax = 1, r = domain->getRadius()*0.5, b = 0.1, c = 0.9;
+        double hmax = 1, r = domain->getRadius()*0.5, g = 0.1, c = 0.9;
         for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
             mesh->getGridCoord(i, CENTER, x);
             double r0 = domain->calcDistance(x, c0);
             double r1 = domain->calcDistance(x, c1);
             if (r0 < r) {
-                (*q1)(timeIdx, i) = b+c*hmax*0.5*(1+cos(M_PI*r0/r));
+                (*q1)(timeIdx, i) = g+c*hmax*0.5*(1+cos(M_PI*r0/r));
             } else if (r1 < r) {
-                (*q1)(timeIdx, i) = b+c*hmax*0.5*(1+cos(M_PI*r1/r));
+                (*q1)(timeIdx, i) = g+c*hmax*0.5*(1+cos(M_PI*r1/r));
             } else {
-                (*q1)(timeIdx, i) = b;
+                (*q1)(timeIdx, i) = g;
             }
+        }
+        // add another tracer which is nonlinearly related to the q1
+        LADY_SCALAR_FIELD *q2;
+        q.push_back(new LADY_SCALAR_FIELD); q2 = q.back();
+        q2->create("", "", "", *mesh, CENTER);
+        double a = -0.8, b = 0.9;
+        for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+            (*q2)(timeIdx, i) = a*(*q1)(timeIdx, i)+b;
         }
     } else if (initCond == SLOTTED_CYLINDERS) {
         double b = 0.1, c = 1.0, r = 0.5;

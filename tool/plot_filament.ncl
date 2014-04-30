@@ -4,10 +4,11 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 
 begin
 
-	file_prefix = "tracers.deform.sc.240x120"
+	init_cond = "ch"
+	file_prefix = "tracers.deform."+init_cond+".480x240"
 
-	f0 = addfile("/Volumes/Promise Pegasus/data/gmd-2014/test-cases/deform/"+file_prefix+".0000.nc", "r")
-	f1 = addfile("/Volumes/Promise Pegasus/data/gmd-2014/test-cases/deform/"+file_prefix+".0300.nc", "r")
+	f0 = addfile("../build/Release/"+file_prefix+".0000.nc", "r")
+	f1 = addfile("../build/Release/"+file_prefix+".0600.nc", "r")
 
 	num_lon = dimsizes(f0->lon)
 	num_lat = dimsizes(f1->lat)
@@ -66,6 +67,8 @@ begin
 	res@tmYMajorGridThicknessF = 0.1
 	res@tmXMajorGridLineDashPattern = 2
 	res@tmYMajorGridLineDashPattern = 2
+	res@xyLineThicknessF = 3
+	res@xyMarkerSizeF = 10
 
 	plot = gsn_csm_xy(wks, t, lf, res)
 

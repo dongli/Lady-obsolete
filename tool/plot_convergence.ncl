@@ -11,7 +11,7 @@ begin
 	ref_line_1st = 0.01*x
 	ref_line_2nd = 0.0001*x^2
 
-	wks = gsn_open_wks("x11", "convergence")
+	wks = gsn_open_wks("pdf", "convergence")
 
 	res = True
 	res@gsnDraw = False
@@ -22,9 +22,9 @@ begin
 	res@xyYStyle = "Log"
 	res@xyLineThicknessF = 5.0
 	res@trXReverse = True
-	res@trXMinF = 0.5
-	res@trXMaxF = 4.5
-	res@trYMinF = 1.0e-8
+	res@trXMinF = min(x)-0.1
+	res@trXMaxF = max(x)+0.5
+	res@trYMinF = 1.0e-5
 	res@trYMaxF = 1
 	res@tmXBTickStartF = res@trXMinF
 	res@tmXBTickEndF = res@trXMaxF
@@ -36,6 +36,12 @@ begin
 	res@tmYMajorGridThicknessF = 1.0
 	res@tmXMajorGridLineDashPattern = 2
 	res@tmYMajorGridLineDashPattern = 2
+	res@tmXBMode = "Explicit"
+	res@tmXBValues = x
+	res@tmXBLabels = (/"0.375~S~o~N~","0.75~S~o~N~","1.5~S~o~N~","3~S~o~N~"/)
+	res@tiXAxisString = "temporal resolution"
+	res@tiYAxisString = "Linf error"
+	res@gsnLeftString = "convergence rate: "+sprintf("%6.4f", rate)
 
 	res@xyMarkLineMode = "MarkLines"
 	res@xyMarkerSizeF = 10
