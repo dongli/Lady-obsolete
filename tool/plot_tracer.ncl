@@ -4,12 +4,12 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 
 begin
 
-    run_type = "Release"
+    file_prefix = "tracers.deform.sc.240x120.split10"
+    run_type = "Debug"
     time_stamp = "%4.4d"
-    start_time = 210
-    end_time = 222
+    start_time = 140
+    end_time = 300
     time_step = 1
-    file_prefix = "tracers.deform.gh.120x60"
 
     PI = atan(1.0)*4
     RAD = PI/180
@@ -52,53 +52,81 @@ begin
     res_s2@gsMarkerSizeF = point_size
     res_s2@gsLineColor = "red"
 
-    ; check = ispan(10000, 10240, 10)
-    check = (/28565/)
+    ; check = ispan(241, 480, 10)
+    check = (/12066,28232,28233,53532,53533,65563,65564/)
+    colors = (/"red","blue","blue","green","green","magenta","magenta"/)
 
     do l = 0, num_time-1
         system("echo file: "+fs(l))
         f = addfile(fs(l), "r")
+        if (isdefined("id")) then
+            delete(id)
+        end if
+        if (isdefined("c")) then
+            delete(c)
+        end if
+        id = f->id
+        c = f->c/RAD
         ; res_map@gsnPolar = "NH"
-        ; res_map@mpMinLatF = 70
+        ; res_map@mpMinLatF = 0
         ; res_map@gsnPolar = "SH"
-        ; res_map@mpMaxLatF = -70
+        ; res_map@mpMaxLatF = -45.0
         ; if (isdefined("check")) then
+        ;     i = ind(id .eq. check(0))
+        ;     if (ismissing(i)) then
+        ;         continue
+        ;     end if
         ;     res_map@mpProjection = "Satellite"
-        ;     res_map@mpCenterLonF = doubletofloat(f->c(check(0),0)/RAD)
-        ;     res_map@mpCenterLatF = doubletofloat(f->c(check(0),1)/RAD)
+        ;     res_map@mpCenterLonF = doubletofloat(c(i,0))
+        ;     res_map@mpCenterLatF = doubletofloat(c(i,1))
         ;     res_map@mpLimitMode = "Angles"
-        ;     res_map@mpLeftAngleF = 2.0
+        ;     res_map@mpLeftAngleF = 8.0
         ;     res_map@mpRightAngleF = res_map@mpLeftAngleF
         ;     res_map@mpTopAngleF = res_map@mpLeftAngleF
         ;     res_map@mpBottomAngleF = res_map@mpLeftAngleF
         ; end if
+        res_map@mpLimitMode = "LatLon"
+        res_map@mpMinLonF = 240.0
+        res_map@mpMaxLonF = 360.0
+        res_map@mpMinLatF = -70.0
+        res_map@mpMaxLatF = -10.0
+        res_map@mpFillOn = True
+        res_map@mpOutlineOn = True
+        res_map@mpGridAndLimbOn = True
+        res_map@mpGridLineDashPattern = 2
+        res_map@mpGridLonSpacingF = 1.5
+        res_map@mpGridLatSpacingF = 1.5
         map = gsn_csm_map(wks, res_map)
         ; tracer centroid
-        do i = 0, num_tracer-1, 1
-            c = (/f->c(i,0),f->c(i,1)/)/RAD
-            if (isdefined("check") .and. any(check .eq. i)) then
-                res_tracer@gsMarkerColor = "blue"
-            else
-                res_tracer@gsMarkerColor = "black"
-            end if
-            gsn_polymarker(wks, map, c(0), c(1), res_tracer)
-        end do
+        ; do i = 0, num_tracer-1, 10
+        ;     if (isdefined("check") .and. any(check .eq. id(i))) then
+        ;         res_tracer@gsMarkerColor = "blue"
+        ;     else
+        ;         res_tracer@gsMarkerColor = "black"
+        ;     end if
+        ;     gsn_polymarker(wks, map, c(i,0), c(i,1), res_tracer)
+        ; end do
         ; tracer shape
         if (.not. isdefined("check")) then
             frame(wks)
             continue
         end if
         do k = 0, dimsizes(check)-1
-            i = check(k)
+            i = ind(id .eq. check(k))
+            if (ismissing(i)) then
+                continue
+            end if
             do j = 0, 3
                 s = f->s1(i,j,:)/RAD
                 gsn_polymarker(wks, map, s(0), s(1), res_s1)
             end do
+            res_s2@gsMarkerColor = colors(k)
             do j = 0, num_skel2-1
                 s = f->s2(i,j,:)/RAD
                 gsn_polymarker(wks, map, s(0), s(1), res_s2)
             end do
         end do
+
         frame(wks)
     end do
 

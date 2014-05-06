@@ -130,13 +130,35 @@ public:
     /**
      *  Update deformation matrix from tracer skeleton.
      *
-     *  @param domain  the domain used for differencing coordinates.
+     *  @param domain  the spatial domain.
+     *  @param mesh    the model mesh.
      *  @param timeIdx the time level index.
      */
     void updateDeformMatrix(const LADY_DOMAIN &domain,
                             const LADY_MESH &mesh,
                             const TimeLevelIndex<2> &timeIdx);
 
+    /**
+     *  Reset deformation matrix from given major axis vertex and scale matrix.
+     *
+     *  @param domain  the spatial domain.
+     *  @param mesh    the model mesh.
+     *  @param timeIdx the time level index.
+     *  @param x       the major axis vertex spatial coordinate.
+     *  @param S       the scale matrix.
+     */
+    void resetDeformMatrix(const LADY_DOMAIN &domain,
+                           const LADY_MESH &mesh,
+                           const TimeLevelIndex<2> &timeIdx,
+                           const LADY_SPACE_COORD &x, const vec &S);
+
+    /**
+     *  Reset tracer skeleton points from deformation matrix
+     *
+     *  @param domain  the spatial domain.
+     *  @param mesh    the model mesh.
+     *  @param timeIdx the time level index.
+     */
     void resetSkeleton(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
                        const TimeLevelIndex<2> &timeIdx);
 

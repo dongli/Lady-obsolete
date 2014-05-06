@@ -491,49 +491,47 @@ void AdvectionManager::splitTracers(const TimeLevelIndex<2> &timeIdx) {
 #endif
         // ---------------------------------------------------------------------
         // add two new tracers to replace the needle tracer
+        const LADY_SPACE_COORD &c0 = (*tracer)->getX(timeIdx);
         Tracer *tracer1 = new Tracer(domain->getNumDim());
         Tracer *tracer2 = new Tracer(domain->getNumDim());
         const mat &H = (*tracer)->getH(timeIdx);
-        const mat &U = (*tracer)->getU();
+        const mat &invH = (*tracer)->getInvH(timeIdx);
         const mat &V = (*tracer)->getV();
         vec S = (*tracer)->getS(); S[0] *= 0.5;
-        // place the two tracers along major axis of the needle tracer
-        static const double scale = 1/sqrt(2.0);
+        LADY_SPACE_COORD x(domain->getNumDim());
         LADY_BODY_COORD y(domain->getNumDim());
-        y() = H*V.col(0)*scale;
-        (*tracer)->getSpaceCoord(*domain, timeIdx, y, tracer1->getX(timeIdx));
-        tracer1->getX(timeIdx).transformToCart(*domain);
+        // ---------------------------------------------------------------------
+        // place the two tracers along major axis of the needle tracer
+        // first tracer
+        LADY_SPACE_COORD &c1 = tracer1->getX(timeIdx);
+        y() = invH*H*V.col(0)*0.5;
+        (*tracer)->getSpaceCoord(*domain, timeIdx, y, c1);
+        c1.transformToCart(*domain);
         tracer1->getMeshIndex(timeIdx).locate(*mesh, tracer1->getX(timeIdx));
-        tracer1->getH(timeIdx) = U*diagmat(S)*V.t();
-        tracer1->getU() = U;
-        tracer1->getS() = S;
-        tracer1->getV() = V;
-        tracer1->getInvH(timeIdx) = inv(tracer1->getH(timeIdx));
-        tracer1->getDetH(timeIdx) = arma::prod(S);
-        tracer1->updateShapeSize(*domain, timeIdx);
-        tracer1->resetSkeleton(*domain, *mesh, timeIdx);
         tracerMeshCells(timeIdx, mesh->wrapIndex(tracer1->getMeshIndex(timeIdx),
                                                  CENTER)).contain(tracer1);
-        tracer1->setID(tracerManager.tracers.size());
+        tracer1->resetDeformMatrix(*domain, *mesh, timeIdx, c0, S);
+        tracer1->setID(tracerManager.tracers.back()->getID()+1);
         tracerManager.tracers.push_back(tracer1);
         connectTracerAndMesh(timeIdx, --tracerManager.tracers.end());
-        y() = -y();
-        (*tracer)->getSpaceCoord(*domain, timeIdx, y, tracer2->getX(timeIdx));
-        tracer2->getX(timeIdx).transformToCart(*domain);
+        // second tracer
+        LADY_SPACE_COORD &c2 = tracer2->getX(timeIdx);
+        y() = -invH*H*V.col(0)*0.5;
+        (*tracer)->getSpaceCoord(*domain, timeIdx, y, c2);
+        c2.transformToCart(*domain);
         tracer2->getMeshIndex(timeIdx).locate(*mesh, tracer2->getX(timeIdx));
-        tracer2->getH(timeIdx) = tracer1->getH(timeIdx);
-        tracer2->getU() = U;
-        tracer2->getS() = S;
-        tracer2->getV() = V;
-        tracer2->getInvH(timeIdx) = tracer1->getInvH(timeIdx);
-        tracer2->getDetH(timeIdx) = tracer1->getDetH(timeIdx);
-        tracer2->updateShapeSize(*domain, timeIdx);
-        tracer2->resetSkeleton(*domain, *mesh, timeIdx);
         tracerMeshCells(timeIdx, mesh->wrapIndex(tracer2->getMeshIndex(timeIdx),
                                                  CENTER)).contain(tracer2);
-        tracer2->setID(tracerManager.tracers.size());
+        tracer2->resetDeformMatrix(*domain, *mesh, timeIdx, c0, S);
+        tracer2->setID(tracerManager.tracers.back()->getID()+1);
         tracerManager.tracers.push_back(tracer2);
         connectTracerAndMesh(timeIdx, --tracerManager.tracers.end());
+#ifndef NDEBUG
+        assert(fabs(tracer1->getDetH(timeIdx)-0.5*(*tracer)->getDetH(timeIdx)) < 1.0e-12);
+        assert(fabs(tracer2->getDetH(timeIdx)-0.5*(*tracer)->getDetH(timeIdx)) < 1.0e-12);
+#endif
+        // ---------------------------------------------------------------------
+        // distribute tracer density and mass evenly
         for (int s = 0; s < tracerManager.getNumSpecies(); ++s) {
             tracer1->addSpecies();
             tracer1->getSpeciesDensity(s) = (*tracer)->getSpeciesDensity(s);
@@ -542,13 +540,13 @@ void AdvectionManager::splitTracers(const TimeLevelIndex<2> &timeIdx) {
             tracer2->getSpeciesDensity(s) = (*tracer)->getSpeciesDensity(s);
             tracer2->calcSpeciesMass(timeIdx, s);
         }
+        REPORT_NOTICE("Long tracer " << (*tracer)->getID() <<
+                      " is split into " << tracer1->getID() << " and " <<
+                      tracer2->getID() << ".");
 #ifndef NDEBUG
         tracer1->outputNeighbors(timeIdx, *domain);
         tracer2->outputNeighbors(timeIdx, *domain);
 #endif
-        REPORT_NOTICE("Long tracer " << (*tracer)->getID() <<
-                      " is split into " << tracer1->getID() << " and " <<
-                      tracer2->getID() << ".");
         // ---------------------------------------------------------------------
         // disconnect the needle tracer from the cells
         for (int i = 0; i < (*tracer)->getNumConnectedCell(); ++i) {

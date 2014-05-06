@@ -166,14 +166,19 @@ const TracerSpeciesInfo& TracerManager::getSpeciesInfo(int speciesIdx) const {
 void TracerManager::output(const string &fileName,
                            const TimeLevelIndex<2> &oldTimeIdx) {
     int ncId;
-    int numTracerDimId, numSkel1DimId, numSkel2DimId, numDimDimId, numSpeciesDimId;
+    int numTracerDimId, numSkel1DimId, numDimDimId, numSpeciesDimId;
+    int idVarId;
     int cDimIds[2], cVarId;
     int hDimIds[3], hVarId;
     int rhoDimIds[2], rhoVarId;
-    int sDimIds[3], s1VarId, s2VarId;
+    int sDimIds[3], s1VarId;
+#ifndef NDEBUG
+    int numSkel2DimId, s2VarId, numSkel2 = 40;
+#endif
     char str[100];
-    int l, numSkel2 = 40;
-    double *data;
+    int l;
+    int *intData;
+    double *doubleData;
     LADY_LIST<Tracer*>::iterator tracer;
 
     if (nc_create(fileName.c_str(), NC_CLOBBER, &ncId) != NC_NOERR) {
@@ -191,10 +196,12 @@ void TracerManager::output(const string &fileName,
             != NC_NOERR) {
             REPORT_ERROR("Failed to define dimension \"num_skel1\"!");
         }
+#ifndef NDEBUG
         if (nc_def_dim(ncId, "num_skel2", numSkel2, &numSkel2DimId)
              != NC_NOERR) {
             REPORT_ERROR("Failed to define dimension \"num_skel2\"!");
         }
+#endif
     }
 
     if (nc_def_dim(ncId, "num_dim", domain->getNumDim(), &numDimDimId)
@@ -218,6 +225,10 @@ void TracerManager::output(const string &fileName,
     if (nc_put_att(ncId, NC_GLOBAL, "create_date", NC_CHAR, strlen(str), str)
         != NC_NOERR) {
         REPORT_ERROR("Failed to put attribute in \"" << fileName << "\"!");
+    }
+    
+    if (nc_def_var(ncId, "id", NC_INT, 1, &numTracerDimId, &idVarId) != NC_NOERR) {
+        REPORT_ERROR("Failed to define variable \"id\"!");
     }
 
     cDimIds[0] = numTracerDimId;
@@ -267,7 +278,7 @@ void TracerManager::output(const string &fileName,
             != NC_NOERR) {
             REPORT_ERROR("Failed to put attribute in \"" << fileName << "\"!");
         }
-        
+#ifndef NDEBUG
         sDimIds[1] = numSkel2DimId;
         if (nc_def_var(ncId, "s2", NC_DOUBLE, 3, sDimIds, &s2VarId)
             != NC_NOERR) {
@@ -278,71 +289,82 @@ void TracerManager::output(const string &fileName,
             != NC_NOERR) {
             REPORT_ERROR("Failed to put attribute in \"" << fileName << "\"!");
         }
+#endif
     }
     
     if (nc_enddef(ncId) != NC_NOERR) {
 
     }
     // -------------------------------------------------------------------------
-    data = new double[tracers.size()*domain->getNumDim()];
+    intData = new int[tracers.size()];
+    l = 0;
+    for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
+        intData[l++] = (*tracer)->getID();
+    }
+    if (nc_put_var(ncId, idVarId, intData) != NC_NOERR) {
+        REPORT_ERROR("Failed to put variable in \"" << fileName << "\"!");
+    }
+    delete [] intData;
+    
+    doubleData = new double[tracers.size()*domain->getNumDim()];
     l = 0;
     for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
         for (int m = 0; m < domain->getNumDim(); ++m) {
-            data[l++] = (*tracer)->getX(oldTimeIdx)(m);
+            doubleData[l++] = (*tracer)->getX(oldTimeIdx)(m);
         }
     }
-    if (nc_put_var(ncId, cVarId, data) != NC_NOERR) {
+    if (nc_put_var(ncId, cVarId, doubleData) != NC_NOERR) {
         REPORT_ERROR("Failed to put variable in \"" << fileName << "\"!");
     }
-    delete [] data;
+    delete [] doubleData;
 
-    data = new double[tracers.size()*domain->getNumDim()*domain->getNumDim()];
+    doubleData = new double[tracers.size()*domain->getNumDim()*domain->getNumDim()];
     l = 0;
     for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
         for (int m1 = 0; m1 < domain->getNumDim(); ++m1) {
             for (int m2 = 0; m2 < domain->getNumDim(); ++m2) {
-                data[l++] = (*tracer)->getH(oldTimeIdx)(m1, m2);
+                doubleData[l++] = (*tracer)->getH(oldTimeIdx)(m1, m2);
             }
         }
     }
-    if (nc_put_var(ncId, hVarId, data) != NC_NOERR) {
+    if (nc_put_var(ncId, hVarId, doubleData) != NC_NOERR) {
         REPORT_ERROR("Failed to put variable in \"" << fileName << "\"!");
     }
-    delete [] data;
+    delete [] doubleData;
     
-    data = new double[tracers.size()*getNumSpecies()];
+    doubleData = new double[tracers.size()*getNumSpecies()];
     l = 0;
     for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
         for (int s = 0; s < getNumSpecies(); ++s) {
-            data[l++] = (*tracer)->getSpeciesDensity(s);
+            doubleData[l++] = (*tracer)->getSpeciesDensity(s);
         }
     }
-    if (nc_put_var(ncId, rhoVarId, data) != NC_NOERR) {
+    if (nc_put_var(ncId, rhoVarId, doubleData) != NC_NOERR) {
         REPORT_ERROR("Failed to put variable in \"" << fileName << "\"!");
     }
-    delete [] data;
+    delete [] doubleData;
 
     if (domain->getNumDim() == 2) {
-        data = new double[tracers.size()*4*domain->getNumDim()];
+        doubleData = new double[tracers.size()*4*domain->getNumDim()];
         l = 0;
         for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
             TracerSkeleton &s = (*tracer)->getSkeleton();
             vector<LADY_SPACE_COORD*> &xs = s.getSpaceCoords(oldTimeIdx);
             for (int i = 0; i < xs.size(); ++i) {
                 for (int m = 0; m < domain->getNumDim(); ++m) {
-                    data[l++] = (*xs[i])(m);
+                    doubleData[l++] = (*xs[i])(m);
                 }
             }
         }
-        if (nc_put_var(ncId, s1VarId, data) != NC_NOERR) {
+        if (nc_put_var(ncId, s1VarId, doubleData) != NC_NOERR) {
             REPORT_ERROR("Failed to put variable in \"" << fileName << "\"!");
         }
-        delete [] data;
-        
+        delete [] doubleData;
+#ifndef NDEBUG
         double dtheta = PI2/numSkel2;
         LADY_BODY_COORD y(2);
         LADY_SPACE_COORD x(2);
-        data = new double[tracers.size()*numSkel2*domain->getNumDim()];
+        doubleData = new double[tracers.size()*numSkel2*domain->getNumDim()];
         l = 0;
         for (tracer = tracers.begin(); tracer != tracers.end(); ++tracer) {
             for (int i = 0; i < numSkel2; ++i) {
@@ -351,14 +373,15 @@ void TracerManager::output(const string &fileName,
                 y(1) = sin(theta);
                 (*tracer)->getSpaceCoord(*domain, oldTimeIdx, y, x);
                 for (int m = 0; m < domain->getNumDim(); ++m) {
-                    data[l++] = x(m);
+                    doubleData[l++] = x(m);
                 }
             }
         }
-        if (nc_put_var(ncId, s2VarId, data) != NC_NOERR) {
+        if (nc_put_var(ncId, s2VarId, doubleData) != NC_NOERR) {
             REPORT_ERROR("Failed to put variable in \"" << fileName << "\"!");
         }
-        delete [] data;
+        delete [] doubleData;
+#endif
     }
     // -------------------------------------------------------------------------
     if (nc_close(ncId) != NC_NOERR) {

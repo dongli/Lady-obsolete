@@ -160,7 +160,7 @@ void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
         q2->create("", "", "", *mesh, CENTER);
         double a = -0.8, b = 0.9;
         for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
-            (*q2)(timeIdx, i) = a*(*q1)(timeIdx, i)+b;
+            (*q2)(timeIdx, i) = a*pow((*q1)(timeIdx, i), 2)+b;
         }
     } else if (initCond == SLOTTED_CYLINDERS) {
         double b = 0.1, c = 1.0, r = 0.5;

@@ -4,23 +4,44 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 
 begin
 
-	x = fspan(1, 4, 4)
-	errors = (/0.00262,0.00524,0.00717,0.01071/)
+	x = (/0.375,0.75,1.5,3.0/)
+	errors = (/0.00765,0.01546,0.03159,0.06551/)
+
+	; calculate the numerical convergence rate
+	log_x = log(x)
+	log_e = log(errors)
+	rate = regline(log_x, log_e)
+
+	; calculate the minimal resolution
+	min_e = 0.033
+	log_min_e = log(min_e)
+	do i = 0, dimsizes(errors)-1
+		if (errors(i) .ge. min_e) then
+			x_span = log_x(i)-log_x(i-1)
+			e_span = log_e(i)-log_e(i-1)
+			x_m = exp((log_min_e*x_span-log_x(i)*log_e(i-1)+log_x(i-1)*log_e(i))/e_span)
+			break
+		end if
+	end do
+	if (.not. isdefined("x_m")) then
+		system("[Error]: Can not find out minimal resolution!")
+		exit
+	end if
 
 	; reference Lines
-	ref_line_1st = 0.01*x
-	ref_line_2nd = 0.0001*x^2
+	ref_line_1st = 0.1*x^2
+	ref_line_2nd = 0.001*x^3
 
 	wks = gsn_open_wks("pdf", "convergence")
 
 	res = True
 	res@gsnDraw = False
 	res@gsnFrame = False
-	res@vpWidthF = 0.4
-	res@vpHeightF = 0.3
+	res@vpWidthF = 0.6
+	res@vpHeightF = 0.4
 	res@xyXStyle = "Log"
 	res@xyYStyle = "Log"
-	res@xyLineThicknessF = 5.0
+	res@xyLineThicknessF = 3.0
 	res@trXReverse = True
 	res@trXMinF = min(x)-0.1
 	res@trXMaxF = max(x)+0.5
@@ -39,9 +60,9 @@ begin
 	res@tmXBMode = "Explicit"
 	res@tmXBValues = x
 	res@tmXBLabels = (/"0.375~S~o~N~","0.75~S~o~N~","1.5~S~o~N~","3~S~o~N~"/)
-	res@tiXAxisString = "temporal resolution"
-	res@tiYAxisString = "Linf error"
-	res@gsnLeftString = "convergence rate: "+sprintf("%6.4f", rate)
+	res@tiXAxisString = "resolution"
+	res@tiYAxisString = "L~B~inf~N~ error"
+	res@gsnLeftString = "convergence rate: "+sprintf("%4.2f", rate)
 
 	res@xyMarkLineMode = "MarkLines"
 	res@xyMarkerSizeF = 10

@@ -75,10 +75,8 @@ void Parcel::updateShapeSize(const LADY_DOMAIN &domain,
                              const TimeLevelIndex<2> &timeIdx) {
     LADY_BODY_COORD y(domain.getNumDim());
     LADY_SPACE_COORD x(domain.getNumDim());
-    vec Y(domain.getNumDim());
     for (int m = 0; m < domain.getNumDim(); ++m) {
-        Y = (*H.getLevel(timeIdx))*V.col(m);
-        y() = (*invH.getLevel(timeIdx))*Y;
+        y() = (*invH.getLevel(timeIdx))*(*H.getLevel(timeIdx))*V.col(m);
         getSpaceCoord(domain, timeIdx, y, x);
         shapeSize.getLevel(timeIdx)[m] = domain.calcDistance(x, *q.getLevel(timeIdx));
     }

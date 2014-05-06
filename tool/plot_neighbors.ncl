@@ -18,15 +18,15 @@ begin
     res_map = True
     res_map@gsnMaximize = False
     res_map@gsnFrame = False
+    ; res_map@mpProjection = "Satellite"
+    ; res_map@mpLimitMode = "Angles"
     res_map@mpCenterLonF = 180.0
-    res_map@mpProjection = "Satellite"
-    res_map@mpLimitMode = "Angles"
-    res_map@mpCenterLonF = centroid(0)
-    res_map@mpCenterLatF = centroid(1)
-    res_map@mpLeftAngleF = satellite_angle
-    res_map@mpRightAngleF = satellite_angle
-    res_map@mpTopAngleF = satellite_angle
-    res_map@mpBottomAngleF = satellite_angle
+    ; res_map@mpCenterLonF = centroid(0)
+    ; res_map@mpCenterLatF = centroid(1)
+    ; res_map@mpLeftAngleF = satellite_angle
+    ; res_map@mpRightAngleF = satellite_angle
+    ; res_map@mpTopAngleF = satellite_angle
+    ; res_map@mpBottomAngleF = satellite_angle
     map = gsn_csm_map(wks, res_map)
 
     ; --------------------------------------------------------------------------
@@ -74,13 +74,6 @@ begin
     res_centroid@gsMarkerIndex = 5
     res_centroid@gsMarkerSizeF = point_size
     gsn_polymarker(wks, map, centroid(0), centroid(1), res_centroid)
-
-    res_centroid@gsMarkerColor = "green"
-    gsn_polymarker(wks, map, 102, -35.04576271, res_centroid)
-
-    ; res_centroid@gsMarkerColor = "green"
-    ; gsn_polymarker(wks, map,  207.8210443164,      -88.5145180883, res_centroid)
-    ; gsn_polymarker(wks, map,  354.3267634360,      -89.6831176477, res_centroid)
 
     frame(wks)
 

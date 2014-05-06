@@ -22,13 +22,23 @@ public:
     TracerSkeleton& operator=(const TracerSkeleton &other);
 
     void init(const LADY_DOMAIN &domain, const LADY_MESH &mesh, double size);
-    
-    void updateLocalCoord(const LADY_DOMAIN &domain, const TimeLevelIndex<2> &timeIdx);
 
-    vector<LADY_SPACE_COORD*>& getSpaceCoords(const TimeLevelIndex<2> &timeIdx) { return x.getLevel(timeIdx); }
+    void updateLocalCoord(const LADY_DOMAIN &domain,
+                          const TimeLevelIndex<2> &timeIdx);
+
+    vector<LADY_SPACE_COORD*>& getSpaceCoords(const TimeLevelIndex<2> &timeIdx) {
+        return x.getLevel(timeIdx);
+    }
+
     const vector<LADY_BODY_COORD*>& getBodyCoords() const { return y; }
-    vector<LADY_MESH_INDEX*>& getMeshIdxs(const TimeLevelIndex<2> &timeIdx) { return idx.getLevel(timeIdx); }
-    const vector<vec>& getLocalCoords(const TimeLevelIndex<2> &timeIdx) const { return xl.getLevel(timeIdx); }
+
+    vector<LADY_MESH_INDEX*>& getMeshIdxs(const TimeLevelIndex<2> &timeIdx) {
+        return idx.getLevel(timeIdx);
+    }
+
+    const vector<vec>& getLocalCoords(const TimeLevelIndex<2> &timeIdx) const {
+        return xl.getLevel(timeIdx);
+    }
 };
 
 }

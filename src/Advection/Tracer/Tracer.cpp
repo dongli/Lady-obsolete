@@ -45,7 +45,7 @@ void Tracer::updateDeformMatrix(const LADY_DOMAIN &domain,
     skeleton->updateLocalCoord(domain, timeIdx);
     const vector<vec> &xl = skeleton->getLocalCoords(timeIdx);
     const vector<LADY_BODY_COORD*> &y = skeleton->getBodyCoords();
-    LADY_MATRIX &H0 = *H.getLevel(timeIdx);
+    mat &H0 = *H.getLevel(timeIdx);
     if (domain.getNumDim() == 2) {
         // elements of four matrices H_12, H_14, H_32, H_34
         double h11_1 = xl[0][0]/(*y[0])(0);
@@ -61,7 +61,7 @@ void Tracer::updateDeformMatrix(const LADY_DOMAIN &domain,
         H0(0, 1) = (h12_2+h12_4)*0.5;
         H0(1, 0) = (h21_1+h21_3)*0.5;
         H0(1, 1) = (h22_2+h22_4)*0.5;
-        if (!svd(U, S, V, *H.getLevel(timeIdx))) {
+        if (!svd(U, S, V, H0)) {
             REPORT_ERROR("Encounter error with arma::svd!");
         }
 #ifndef NDEBUG
@@ -84,7 +84,7 @@ void Tracer::updateDeformMatrix(const LADY_DOMAIN &domain,
                 resetSkeleton(domain, mesh, timeIdx);
             }
         }
-        detH.getLevel(timeIdx) = S[0]*S[1];
+        detH.getLevel(timeIdx) = arma::prod(S);
         *invH.getLevel(timeIdx) = inv(H0);
         // check the degree of filamentation
         if (S[0]/S[1] > 100) {
@@ -93,6 +93,46 @@ void Tracer::updateDeformMatrix(const LADY_DOMAIN &domain,
     } else if (domain.getNumDim() == 3) {
         REPORT_ERROR("Under construction!");
     }
+    updateShapeSize(domain, timeIdx);
+}
+
+void Tracer::resetDeformMatrix(const LADY_DOMAIN &domain,
+                               const LADY_MESH &mesh,
+                               const TimeLevelIndex<2> &timeIdx,
+                               const LADY_SPACE_COORD &x, const vec &S) {
+    vec xs1(domain.getNumDim()), xs2(domain.getNumDim());
+    mat &H0 = *H.getLevel(timeIdx);
+#ifdef LADY_USE_SPHERE_DOMAIN
+    domain.project(geomtk::SphereDomain::STEREOGRAPHIC,
+                   *q.getLevel(timeIdx), x, xs1);
+#ifndef NDEBUG
+    // x should be one vertex of the major axis
+    assert(fabs(norm(xs1)-S[0]) < 1.0e-12);
+#endif
+    if (domain.getNumDim() == 2) {
+        // xs1 -> (1, 0)  xs2 -> (0, 1)
+        xs2[0] = S[1]/S[0];
+        xs2[1] = -xs1[0]*xs2[0]/xs1[1];
+        xs2 *= S[1]/norm(xs2);
+        double cosTheta = xs1[0]/norm(xs1);
+        double sinTheta = xs1[1]/norm(xs1);
+        if (-sinTheta*xs2[0]+cosTheta*xs2[1] < 0) {
+            xs2 *= -1;
+        }
+        H0(0, 0) = xs1[0]; H0(0, 1) = xs2[0];
+        H0(1, 0) = xs1[1]; H0(1, 1) = xs2[1];
+        if (!svd(U, this->S, V, H0)) {
+            REPORT_ERROR("Encounter error with arma::svd!");
+        }
+        detH.getLevel(timeIdx) = arma::prod(S);
+        *invH.getLevel(timeIdx) = inv(H0);
+        resetSkeleton(domain, mesh, timeIdx);
+    } else if (domain.getNumDim() == 3) {
+        REPORT_ERROR("Under construction!");
+    }
+#else
+    REPORT_ERROR("Under construction!");
+#endif
     updateShapeSize(domain, timeIdx);
 }
 
