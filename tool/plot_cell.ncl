@@ -4,13 +4,13 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 
 begin
 
-    test_case = "deform.gh"
+    test_case = "rotation"
     resolution = "240x120"
     time_stamp = "%4.4d"
     run_type = "Release"
     start_time = 0
-    end_time = 600
-    time_step = 300
+    end_time = 100
+    time_step = 1
 
     file_prefix = "tracers."+test_case+"."+resolution
 
@@ -22,7 +22,7 @@ begin
 
     wks = gsn_open_wks("pdf", file_prefix+".cells")
 
-    if (test_case .eq. "rotation" .or. \
+    if (isStrSubset(test_case, "rotation") .or. \
         isStrSubset(test_case, "deform.gh")) then
         gsn_define_colormap(wks, "WhBlGrYeRe")
     end if
@@ -35,6 +35,7 @@ begin
                  (/0.98,0.98,0.22/),(/0.99,0.53,0.14/), \
                  (/0.99,0.09,0.11/)/)
         gsn_define_colormap(wks, cmap)
+        ; gsn_define_colormap(wks, "WhBlGrYeRe")
     end if
 
     res = True
@@ -47,7 +48,7 @@ begin
         res@cnMaxLevelValF = 85000
         res@cnLevelSpacingF = 500.0
     end if
-    if (test_case .eq. "rotation") then
+    if (isStrSubset(test_case, "rotation")) then
         res@cnMinLevelValF = 0.0
         res@cnMaxLevelValF = 1000.0
         res@cnLevelSpacingF = 50.0
@@ -57,6 +58,9 @@ begin
         res@cnMinLevelValF = 0.2
         res@cnMaxLevelValF = 0.9
         res@cnLevelSpacingF = 0.1
+        ; res@cnMinLevelValF = 0.0
+        ; res@cnMaxLevelValF = 1.1
+        ; res@cnLevelSpacingF = 0.05
     end if
     if (isStrSubset(test_case, "deform.gh")) then
         ; res@cnMinLevelValF = 0.9
@@ -73,28 +77,19 @@ begin
     res@mpCenterLonF = 180.0
     res@mpOutlineOn = False
     res@pmTickMarkDisplayMode = "Always"
-
     res@lbBoxMinorExtentF = 0.2
 
     do l = 0, num_time-1
         system("echo file: "+fs(l))
         f = addfile(fs(l), "r")
         num_lat = dimsizes(f->lat)
-        if (test_case .eq. "rotation") then
-            q = f->q0
-        end if
-        if (isStrSubset(test_case, "deform")) then
-            q = f->q1/f->q0
-        end if
+        q = f->q1/f->q0
         copy_VarCoords(f->q0, q)
-        ;res@gsnRightString = "Max:"+sprintf("%8.1f", max(q(1:num_lat-2,:)))
-        ;plot = gsn_csm_contour_map(wks, q(1:num_lat-2,:), res)
         res@gsnLeftString = ""
         res@gsnRightString = "Min:"+sprintf("%8.5f", min(q))+" "+ \
                              "Max:"+sprintf("%8.5f", max(q))
-        if (isStrSubset(test_case, "deform") .or. test_case .eq. "rotation") then
+        if (isStrSubset(test_case, "deform") .or. isStrSubset(test_case, "rotation")) then
             plot = gsn_csm_contour_map(wks, q, res)
-            ; plot = gsn_csm_contour_map(wks, q(1:num_lat-2,:), res)
         end if
     end do
 

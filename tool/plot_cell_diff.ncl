@@ -4,13 +4,13 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 
 begin
 
-    run_type = "Release"
+    run_type = "Debug"
     time_stamp = "%4.4d"
-    start_time = 100
-    end_time = 100
+    start_time = 150
+    end_time = 150
     time_step = 1
-    file_prefix_1 = "tracers.deform.sc.240x120"
-    file_prefix_2 = "tracers.deform.sc.split10.240x120"
+    file_prefix_1 = "tracers.deform.sc.240x120.split100"
+    file_prefix_2 = "tracers.deform.sc.240x120.split20.2"
 
     fs_1 = systemfunc("for (( i = "+start_time+"; i <= "+end_time+"; "+ \
         "i = i+"+time_step+" )); "+ \

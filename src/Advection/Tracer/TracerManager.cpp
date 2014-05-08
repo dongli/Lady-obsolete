@@ -114,7 +114,7 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
         h(0) = dlon*domain.getRadius()*x0.getCosLat();
         h(1) = dlat*domain.getRadius();
         // When h is small, there may be small spots on the grid densities.
-        h *= 1.5;
+        h *= 2;
 #else
         REPORT_ERROR("Under construction!");
 #endif

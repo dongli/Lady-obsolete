@@ -84,17 +84,23 @@ void SolidRotationTestCase::advance(double time,
 }
 
 void SolidRotationTestCase::calcInitCond(AdvectionManager &advectionManager) {
+    TimeLevelIndex<2> initTimeIdx;
     q.push_back(new LADY_SCALAR_FIELD);
     q.front()->create("", "", "", *mesh, CENTER);
-    TimeLevelIndex<2> initTimeIdx;
-    calcSolution(0, initTimeIdx, *q.front());
+    for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+        (*q.front())(initTimeIdx, i) = 1.0;
+        (*q.front())(initTimeIdx+1, i) = 1.0;
+    }
+    q.push_back(new LADY_SCALAR_FIELD);
+    q.back()->create("", "", "", *mesh, CENTER);
+    calcSolution(0, initTimeIdx, *q.back());
     AdvectionTestCase::calcInitCond(advectionManager);
 }
 
 void SolidRotationTestCase::calcSolution(double dt,
                                          const TimeLevelIndex<2> &timeIdx,
                                          AdvectionManager &advectionManager) {
-    calcSolution(dt, timeIdx, *q.front());
+    calcSolution(dt, timeIdx, *q.back());
     advectionManager.input(timeIdx, q);
     REPORT_NOTICE("Overwrite tracers with the true solution.");
 }

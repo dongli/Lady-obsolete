@@ -4,11 +4,11 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 
 begin
 
-    file_prefix = "tracers.deform.sc.240x120.split10"
+    file_prefix = "tracers.deform.sc.240x120.split20"
     run_type = "Debug"
     time_stamp = "%4.4d"
-    start_time = 140
-    end_time = 300
+    start_time = 130
+    end_time = 138
     time_step = 1
 
     PI = atan(1.0)*4
@@ -52,10 +52,12 @@ begin
     res_s2@gsMarkerSizeF = point_size
     res_s2@gsLineColor = "red"
 
-    ; check = ispan(241, 480, 10)
-    check = (/12066,28232,28233,53532,53533,65563,65564/)
-    colors = (/"red","blue","blue","green","green","magenta","magenta"/)
+    ; check = ispan(7500, 7500, 100)
+    ; check = (/7500,12066,28240,28241,46364,46365,70250,70251/)
+    check = (/20256,24420,24421/)
+    ; colors = (/"red","blue","blue","green","green","magenta","magenta"/)
 
+    s2 = new((/2,num_skel2+1/), double)
     do l = 0, num_time-1
         system("echo file: "+fs(l))
         f = addfile(fs(l), "r")
@@ -71,31 +73,29 @@ begin
         ; res_map@mpMinLatF = 0
         ; res_map@gsnPolar = "SH"
         ; res_map@mpMaxLatF = -45.0
-        ; if (isdefined("check")) then
-        ;     i = ind(id .eq. check(0))
-        ;     if (ismissing(i)) then
-        ;         continue
-        ;     end if
-        ;     res_map@mpProjection = "Satellite"
-        ;     res_map@mpCenterLonF = doubletofloat(c(i,0))
-        ;     res_map@mpCenterLatF = doubletofloat(c(i,1))
-        ;     res_map@mpLimitMode = "Angles"
-        ;     res_map@mpLeftAngleF = 8.0
-        ;     res_map@mpRightAngleF = res_map@mpLeftAngleF
-        ;     res_map@mpTopAngleF = res_map@mpLeftAngleF
-        ;     res_map@mpBottomAngleF = res_map@mpLeftAngleF
-        ; end if
-        res_map@mpLimitMode = "LatLon"
-        res_map@mpMinLonF = 240.0
-        res_map@mpMaxLonF = 360.0
-        res_map@mpMinLatF = -70.0
-        res_map@mpMaxLatF = -10.0
-        res_map@mpFillOn = True
-        res_map@mpOutlineOn = True
-        res_map@mpGridAndLimbOn = True
-        res_map@mpGridLineDashPattern = 2
-        res_map@mpGridLonSpacingF = 1.5
-        res_map@mpGridLatSpacingF = 1.5
+        if (isdefined("check")) then
+            i = ind(id .eq. check(0))
+            if (ismissing(i)) then
+                continue
+            end if
+            res_map@mpProjection = "Satellite"
+            res_map@mpCenterLonF = doubletofloat(c(i,0))
+            res_map@mpCenterLatF = doubletofloat(c(i,1))
+            res_map@mpLimitMode = "Angles"
+            res_map@mpLeftAngleF = 8.0
+            res_map@mpRightAngleF = res_map@mpLeftAngleF
+            res_map@mpTopAngleF = res_map@mpLeftAngleF
+            res_map@mpBottomAngleF = res_map@mpLeftAngleF
+        end if
+        ; res_map@mpLimitMode = "LatLon"
+        ; res_map@mpMinLonF = 240.0
+        ; res_map@mpMaxLonF = 330.0
+        ; res_map@mpMinLatF = -70.0
+        ; res_map@mpMaxLatF = -10.0
+        ; res_map@mpGridAndLimbOn = True
+        ; res_map@mpGridLineColor = "grey"
+        ; res_map@mpGridLonSpacingF = 1.5
+        ; res_map@mpGridLatSpacingF = 1.5
         map = gsn_csm_map(wks, res_map)
         ; tracer centroid
         ; do i = 0, num_tracer-1, 10
@@ -116,15 +116,18 @@ begin
             if (ismissing(i)) then
                 continue
             end if
-            do j = 0, 3
-                s = f->s1(i,j,:)/RAD
-                gsn_polymarker(wks, map, s(0), s(1), res_s1)
-            end do
-            res_s2@gsMarkerColor = colors(k)
+            ; do j = 0, 3
+            ;     s1 = f->s1(i,j,:)/RAD
+            ;     gsn_polymarker(wks, map, s1(0), s1(1), res_s1)
+            ; end do
+            ; res_s2@gsMarkerColor = colors(k)
+            ; res_s2@gsLineColor = colors(k)
             do j = 0, num_skel2-1
-                s = f->s2(i,j,:)/RAD
-                gsn_polymarker(wks, map, s(0), s(1), res_s2)
+                s2(:,j) = f->s2(i,j,:)/RAD
+                ; gsn_polymarker(wks, map, s2(0,j), s2(1,j), res_s2)
             end do
+            s2(:,num_skel2) = s2(:,0)
+            gsn_polyline(wks, map, s2(0,:), s2(1,:), res_s2)
         end do
 
         frame(wks)

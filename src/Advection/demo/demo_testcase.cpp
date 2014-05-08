@@ -1,8 +1,8 @@
 #include "lady.h"
 
 #define USE_DEFORMATION_TEST_CASE 0
-#define USE_SOLID_ROTATION_TEST_CASE 0
-#define USE_BAROTROPIC_TEST_CASE 1
+#define USE_SOLID_ROTATION_TEST_CASE 1
+#define USE_BAROTROPIC_TEST_CASE 0
 #define CALCULATE_SOLUTION 0
 
 int main(int argc, const char *argv[])
@@ -10,13 +10,13 @@ int main(int argc, const char *argv[])
 #if USE_DEFORMATION_TEST_CASE == 1
     lady::DeformationTestCase testCase(lady::DeformationTestCase::CASE4,
                                        lady::DeformationTestCase::SLOTTED_CYLINDERS);
-    geomtk::StampString o1("tracers.deform.240x120.", ".nc");
+    geomtk::StampString o1("tracers.deform.sc.240x120.split20.", ".nc");
 #elif USE_SOLID_ROTATION_TEST_CASE == 1
     lady::SolidRotationTestCase testCase;
 #if CALCULATE_SOLUTION == 1
     geomtk::StampString o1("tracers.rotation.true.240x120.", ".nc");
 #else
-    geomtk::StampString o1("tracers.rotation.480x240.", ".nc");
+    geomtk::StampString o1("tracers.rotation.240x120.", ".nc");
 #endif
 #elif USE_BAROTROPIC_TEST_CASE == 1
     lady::BarotropicTestCase testCase;
@@ -30,8 +30,8 @@ int main(int argc, const char *argv[])
     timeManager.init(testCase.getStartTime(), testCase.getEndTime(),
                      testCase.getStepSize());
     testCase.init(timeManager);
-    advectionManager.init(testCase.getDomain(), testCase.getMesh(), 80, 40);
-
+    advectionManager.init(testCase.getDomain(), testCase.getMesh(), 240, 120);
+    
     testCase.calcInitCond(advectionManager);
     advectionManager.output(o1.run("%4.4d", timeManager.getNumStep()), oldTimeIdx);
 
@@ -50,7 +50,9 @@ int main(int argc, const char *argv[])
 #endif
         timeManager.advance();
         oldTimeIdx.shift();
-        advectionManager.output(o1.run("%4.4d", timeManager.getNumStep()), oldTimeIdx);
+//        if (timeManager.getNumStep() == 60 || timeManager.getNumStep() == 120) {
+            advectionManager.output(o1.run("%4.4d", timeManager.getNumStep()), oldTimeIdx);
+//        }
     }
 
     return 0;

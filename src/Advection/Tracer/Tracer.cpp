@@ -81,13 +81,13 @@ void Tracer::updateDeformMatrix(const LADY_DOMAIN &domain,
                 double tmp = sqrt(volume/(S[0]*S[1]));
                 S[0] *= tmp; S[1] *= tmp;
                 H0 = U*diagmat(S)*V.t();
-                resetSkeleton(domain, mesh, timeIdx);
+//                resetSkeleton(domain, mesh, timeIdx);
             }
         }
         detH.getLevel(timeIdx) = arma::prod(S);
         *invH.getLevel(timeIdx) = inv(H0);
         // check the degree of filamentation
-        if (S[0]/S[1] > 100) {
+        if (S[0]/S[1] > 20) {
             badType = EXTREME_FILAMENTATION;
         }
     } else if (domain.getNumDim() == 3) {
@@ -105,10 +105,8 @@ void Tracer::resetDeformMatrix(const LADY_DOMAIN &domain,
 #ifdef LADY_USE_SPHERE_DOMAIN
     domain.project(geomtk::SphereDomain::STEREOGRAPHIC,
                    *q.getLevel(timeIdx), x, xs1);
-#ifndef NDEBUG
     // x should be one vertex of the major axis
-    assert(fabs(norm(xs1)-S[0]) < 1.0e-12);
-#endif
+    xs1 *= S[0]/norm(xs1);
     if (domain.getNumDim() == 2) {
         // xs1 -> (1, 0)  xs2 -> (0, 1)
         xs2[0] = S[1]/S[0];

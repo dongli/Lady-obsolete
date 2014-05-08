@@ -67,7 +67,7 @@ double Parcel::getShapeFunction(const TimeLevelIndex<2> &timeIdx,
                                 const LADY_BODY_COORD &y) {
     double f;
     ShapeFunction::evalFunc(y, f);
-    f /= detH.getLevel(timeIdx);
+//    f /= detH.getLevel(timeIdx);
     return f;
 }
 

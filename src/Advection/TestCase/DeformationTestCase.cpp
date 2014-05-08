@@ -24,7 +24,7 @@ void DeformationTestCase::init(const geomtk::TimeManager &timeManager) {
     // -------------------------------------------------------------------------
     // initialize mesh
     mesh = new geomtk::RLLMesh(*domain);
-    mesh->init(180, 91);
+    mesh->init(240, 121);
     // -------------------------------------------------------------------------
     // initialize velocity
     velocity.create(*mesh, true, HAS_HALF_LEVEL);

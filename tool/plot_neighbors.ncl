@@ -18,15 +18,15 @@ begin
     res_map = True
     res_map@gsnMaximize = False
     res_map@gsnFrame = False
-    ; res_map@mpProjection = "Satellite"
-    ; res_map@mpLimitMode = "Angles"
+    res_map@mpProjection = "Satellite"
+    res_map@mpLimitMode = "Angles"
     res_map@mpCenterLonF = 180.0
-    ; res_map@mpCenterLonF = centroid(0)
-    ; res_map@mpCenterLatF = centroid(1)
-    ; res_map@mpLeftAngleF = satellite_angle
-    ; res_map@mpRightAngleF = satellite_angle
-    ; res_map@mpTopAngleF = satellite_angle
-    ; res_map@mpBottomAngleF = satellite_angle
+    res_map@mpCenterLonF = centroid(0)
+    res_map@mpCenterLatF = centroid(1)
+    res_map@mpLeftAngleF = satellite_angle
+    res_map@mpRightAngleF = satellite_angle
+    res_map@mpTopAngleF = satellite_angle
+    res_map@mpBottomAngleF = satellite_angle
     map = gsn_csm_map(wks, res_map)
 
     ; --------------------------------------------------------------------------
