@@ -11,6 +11,9 @@ AdvectionManager::AdvectionManager() {
     numLongTracer = 0;
     numUnresolvedTracer = 0;
     numVoidCell = 0;
+    alpha = 0.85;
+    beta1 = 1;
+    beta2 = 10;
     REPORT_ONLINE;
 }
 
@@ -23,25 +26,25 @@ AdvectionManager::~AdvectionManager() {
 }
 
 void AdvectionManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
-                            int numParcelX, int numParcelY) {
+                            const geomtk::ConfigManager &configManager) {
     this->domain = &domain;
     this->mesh = &mesh;
     TimeLevelIndex<2> initTimeIdx;
 #ifndef NDEBUG
     assert(initTimeIdx.get() == 0);
 #endif
+    configManager.getValue("lasm", "alpha", alpha);
+    configManager.getValue("lasm", "beta1", beta1);
+    configManager.getValue("lasm", "beta2", beta2);
     // -------------------------------------------------------------------------
     // initialize tracer manager
-    tracerManager.init(domain, mesh, numParcelX, numParcelY);
-    // -------------------------------------------------------------------------
+    tracerManager.init(domain, mesh, configManager);
     // initialize shape function (or kernel function)
     ShapeFunction::init(domain);
-    // -------------------------------------------------------------------------
     // initialize regrid object
     if (regrid == NULL) {
         regrid = new LADY_REGRID(mesh);
     }
-    // -------------------------------------------------------------------------
     // initialize tracer mesh cells
     tracerMeshCells.create("", "", "mesh cells for storing tracers", mesh, CENTER);
     for (int i = 0; i < mesh.getTotalNumGrid(CENTER); ++i) {
@@ -55,7 +58,6 @@ void AdvectionManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
             tracerMeshCells(initTimeIdx+l, i).setID(i);
         }
     }
-    // -------------------------------------------------------------------------
     // initialize tree structure of mesh grids
     cellCoords.reshape(3, mesh.getTotalNumGrid(CENTER));
     for (int i = 0; i < mesh.getTotalNumGrid(CENTER); ++i) {
@@ -501,7 +503,6 @@ void AdvectionManager::splitTracers(const TimeLevelIndex<2> &timeIdx) {
         (*tracer)->dump(timeIdx, *domain, file, 0);
         int idx = 1;
 #endif
-        static const double alpha = 0.85;
         // ---------------------------------------------------------------------
         const LADY_SPACE_COORD &c0 = (*tracer)->getX(timeIdx);
         Tracer *tracer1 = new Tracer(domain->getNumDim());
@@ -631,7 +632,6 @@ void AdvectionManager::mergeTracers(const TimeLevelIndex<2> &timeIdx) {
         LADY_BODY_COORD y(domain->getNumDim()), y0(domain->getNumDim());
         y0() = invH*H*V.col(0);
         vec weights(cell->getNumConnectedTracer(), arma::fill::zeros);
-        double beta1 = 1, beta2 = 10;
 #ifndef NDEBUG
         vec totalMass1(tracerManager.getNumSpecies(), arma::fill::zeros);
         vec totalMass2(tracerManager.getNumSpecies(), arma::fill::zeros);

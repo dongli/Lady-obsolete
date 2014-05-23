@@ -7,6 +7,7 @@
 
 int main(int argc, const char *argv[])
 {
+    geomtk::ConfigManager configManager;
 #if USE_DEFORMATION_TEST_CASE == 1
     lady::DeformationTestCase testCase(lady::DeformationTestCase::CASE4);
     geomtk::StampString o1("tracers.deform.case4.gammas20.240x120.", ".nc");
@@ -26,10 +27,11 @@ int main(int argc, const char *argv[])
     geomtk::TimeLevelIndex<2> oldTimeIdx;
     // -------------------------------------------------------------------------
     // initialization
+    configManager.parse(argv[1]);
     timeManager.init(testCase.getStartTime(), testCase.getEndTime(),
                      testCase.getStepSize());
     testCase.init(timeManager);
-    advectionManager.init(testCase.getDomain(), testCase.getMesh(), 240, 120);
+    advectionManager.init(testCase.getDomain(), testCase.getMesh(), configManager);
     
     testCase.calcInitCond(advectionManager);
     advectionManager.output(o1.run("%4.4d", timeManager.getNumStep()), oldTimeIdx);

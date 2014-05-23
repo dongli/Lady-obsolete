@@ -15,8 +15,12 @@ protected:
     const LADY_MESH *mesh;
     TracerManager tracerManager;
     LADY_FIELD<TracerMeshCell> tracerMeshCells;
-    LADY_REGRID *regrid;                        //>! used to interpolate velocity onto tracers
-    TimeLevels<vector<double>, 2> totalMass;    //>! tracer species total mass array
+    LADY_REGRID *regrid; //>! used to interpolate velocity onto tracers
+    TimeLevels<vector<double>, 2> totalMass; //>! tracer species total mass
+    // key parameters
+    double alpha; //>! control the location of new split parcels
+    double beta1; //>! control the merging weight along the major axis
+    double beta2; //>! control the merging weight vertical to the major axis
 private:
     // range search parameters
     Tree *cellTree;                 //>! tree data structure for mesh cells for
@@ -38,13 +42,12 @@ public:
     /**
      *  Initialize advection manager.
      *
-     *  @param domain     the spatial domain.
-     *  @param mesh       the mesh.
-     *  @param numParcelX the number of parcels (a.k.a., tracers) along x axis.
-     *  @param numParcelY the number of parcels (a.k.a., tracers) along y axis.
+     *  @param domain        the spatial domain.
+     *  @param mesh          the mesh.
+     *  @param configManager the configuration manager.
      */
     void init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
-              int numParcelX, int numParcelY);
+              const geomtk::ConfigManager &configManager);
 
     const LADY_FIELD<TracerMeshCell>& getTracerMeshCells() const {
         return tracerMeshCells;

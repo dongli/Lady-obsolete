@@ -14,6 +14,7 @@ class TracerMeshCell;
  *  field. It derives from parcel.
  */
 class Tracer : public Parcel {
+    friend class TracerManager;
 public:
     enum BadDeformMatrixType {
         GOOD_SHAPE, EXTREME_FILAMENTATION, NOT_RESOLVED
@@ -31,6 +32,8 @@ protected:
     vector<TracerMeshCell*> connectedCells;
 
     TracerMeshCell *hostCell;
+
+    static double gammas;
 public:
     Tracer(int numDim);
     virtual ~Tracer();

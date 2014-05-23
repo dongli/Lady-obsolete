@@ -4,6 +4,8 @@
 
 namespace lady {
 
+double Tracer::gammas = 20;
+
 Tracer::Tracer(int numDim) : Parcel(numDim) {
     skeleton = new TracerSkeleton(this, numDim);
     badType = GOOD_SHAPE;
@@ -88,7 +90,7 @@ void Tracer::updateDeformMatrix(const LADY_DOMAIN &domain,
         detH.getLevel(timeIdx) = arma::prod(S);
         *invH.getLevel(timeIdx) = inv(H0);
         // check the degree of filamentation
-        if (S[0]/S[1] > 20) {
+        if (S[0]/S[1] > gammas) {
             badType = EXTREME_FILAMENTATION;
         }
     } else if (domain.getNumDim() == 3) {
