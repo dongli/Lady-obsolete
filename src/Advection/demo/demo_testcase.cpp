@@ -8,9 +8,8 @@
 int main(int argc, const char *argv[])
 {
 #if USE_DEFORMATION_TEST_CASE == 1
-    lady::DeformationTestCase testCase(lady::DeformationTestCase::CASE4,
-                                       lady::DeformationTestCase::SLOTTED_CYLINDERS);
-    geomtk::StampString o1("tracers.deform.sc.240x120.split20.", ".nc");
+    lady::DeformationTestCase testCase(lady::DeformationTestCase::CASE4);
+    geomtk::StampString o1("tracers.deform.case4.gammas20.240x120.", ".nc");
 #elif USE_SOLID_ROTATION_TEST_CASE == 1
     lady::SolidRotationTestCase testCase;
 #if CALCULATE_SOLUTION == 1
@@ -20,7 +19,7 @@ int main(int argc, const char *argv[])
 #endif
 #elif USE_BAROTROPIC_TEST_CASE == 1
     lady::BarotropicTestCase testCase;
-    geomtk::StampString o1("tracers.barotropic.80x40.", ".nc");
+    geomtk::StampString o1("tracers.barotropic.160x80.", ".nc");
 #endif
     lady::AdvectionManager advectionManager;
     geomtk::TimeManager timeManager;
@@ -34,7 +33,6 @@ int main(int argc, const char *argv[])
     
     testCase.calcInitCond(advectionManager);
     advectionManager.output(o1.run("%4.4d", timeManager.getNumStep()), oldTimeIdx);
-
     testCase.advance(timeManager.getSeconds(), oldTimeIdx);
     // -------------------------------------------------------------------------
     // integration loop
@@ -50,9 +48,7 @@ int main(int argc, const char *argv[])
 #endif
         timeManager.advance();
         oldTimeIdx.shift();
-//        if (timeManager.getNumStep() == 60 || timeManager.getNumStep() == 120) {
-            advectionManager.output(o1.run("%4.4d", timeManager.getNumStep()), oldTimeIdx);
-//        }
+        advectionManager.output(o1.run("%4.4d", timeManager.getNumStep()), oldTimeIdx);
     }
 
     return 0;

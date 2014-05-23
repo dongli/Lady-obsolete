@@ -4,8 +4,7 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 
 begin
 
-	init_cond = "ch"
-	file_prefix = "tracers.deform."+init_cond+".480x240"
+	file_prefix = "tracers.deform.240x120.reset_skel.split100"
 
 	f0 = addfile("../build/Release/"+file_prefix+".0000.nc", "r")
 	f1 = addfile("../build/Release/"+file_prefix+".0600.nc", "r")

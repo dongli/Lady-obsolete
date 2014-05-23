@@ -2,9 +2,8 @@
 
 namespace lady {
 
-DeformationTestCase::DeformationTestCase(SubCase subCase, InitCond initCond) {
+DeformationTestCase::DeformationTestCase(SubCase subCase) {
     this->subCase = subCase;
-    this->initCond = initCond;
     period = 5.0;
     REPORT_ONLINE;
 }
@@ -125,71 +124,82 @@ void DeformationTestCase::advance(double time,
 }
 
 void DeformationTestCase::calcInitCond(AdvectionManager &advectionManager) {
-    LADY_SCALAR_FIELD *q0, *q1;
+    LADY_SCALAR_FIELD *q0; // reference tracer
+    LADY_SCALAR_FIELD *q1; // cosine hills tracer
+    LADY_SCALAR_FIELD *q2; // tracer correlated to q1
+    LADY_SCALAR_FIELD *q3; // slotted cylinders tracer
+    LADY_SCALAR_FIELD *q4; // Gaussian hills tracer
     TimeLevelIndex<2> timeIdx;
-    LADY_SPACE_COORD c0(2), c1(2);
+    double hmax, r, g, a, b, c;
+    LADY_SPACE_COORD x(2), c0(2), c1(2);
     c0.setCoord(M_PI*5.0/6.0, 0.0); c0.transformToCart(*domain);
     c1.setCoord(M_PI*7.0/6.0, 0.0); c1.transformToCart(*domain);
+    // -------------------------------------------------------------------------
     // reference tracer
     q.push_back(new LADY_SCALAR_FIELD); q0 = q.back();
     q0->create("", "", "", *mesh, CENTER);
-    // test tracer
-    q.push_back(new LADY_SCALAR_FIELD); q1 = q.back();
-    q1->create("", "", "", *mesh, CENTER);
-    LADY_SPACE_COORD x(2);
     for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
         (*q0)(timeIdx, i) = 1.0;
     }
-    if (initCond == COSINE_HILLS) {
-        double hmax = 1, r = domain->getRadius()*0.5, g = 0.1, c = 0.9;
-        for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
-            mesh->getGridCoord(i, CENTER, x);
-            double r0 = domain->calcDistance(x, c0);
-            double r1 = domain->calcDistance(x, c1);
-            if (r0 < r) {
-                (*q1)(timeIdx, i) = g+c*hmax*0.5*(1+cos(M_PI*r0/r));
-            } else if (r1 < r) {
-                (*q1)(timeIdx, i) = g+c*hmax*0.5*(1+cos(M_PI*r1/r));
-            } else {
-                (*q1)(timeIdx, i) = g;
-            }
-        }
-        // add another tracer which is nonlinearly related to the q1
-        LADY_SCALAR_FIELD *q2;
-        q.push_back(new LADY_SCALAR_FIELD); q2 = q.back();
-        q2->create("", "", "", *mesh, CENTER);
-        double a = -0.8, b = 0.9;
-        for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
-            (*q2)(timeIdx, i) = a*pow((*q1)(timeIdx, i), 2)+b;
-        }
-    } else if (initCond == SLOTTED_CYLINDERS) {
-        double b = 0.1, c = 1.0, r = 0.5;
-        for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
-            mesh->getGridCoord(i, CENTER, x);
-            double r0 = domain->calcDistance(x, c0);
-            double r1 = domain->calcDistance(x, c1);
-            if ((r0 <= r && fabs(x(0)-c0(0)) >= r/6.0) ||
-                (r1 <= r && fabs(x(0)-c1(0)) >= r/6.0))
-                (*q1)(timeIdx, i) = c;
-            else if (r0 <= r && fabs(x(0)-c0(0)) < r/6.0 &&
-                     x(1)-c0(1) < -5.0/12.0*r)
-                (*q1)(timeIdx, i) = c;
-            else if (r1 <= r && fabs(x(0)-c1(0)) < r/6.0 &&
-                     x(1)-c1(1) > 5.0/12.0*r)
-                (*q1)(timeIdx, i) = c;
-            else
-                (*q1)(timeIdx, i) = b;
-        }
-    } else if (initCond == GAUSSIAN_HILLS) {
-        double hmax = 0.95, b = 5.0;
-        for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
-            mesh->getGridCoord(i, CENTER, x);
-            x.transformToCart(*domain);
-            vec d0 = x.getCartCoord()-c0.getCartCoord();
-            vec d1 = x.getCartCoord()-c1.getCartCoord();
-            (*q1)(timeIdx, i) = hmax*(exp(-b*dot(d0, d0))+exp(-b*dot(d1, d1)));
+    // -------------------------------------------------------------------------
+    // cosine hills tracer
+    q.push_back(new LADY_SCALAR_FIELD); q1 = q.back();
+    q1->create("", "", "", *mesh, CENTER);
+    hmax = 1, r = domain->getRadius()*0.5, g = 0.1, c = 0.9;
+    for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+        mesh->getGridCoord(i, CENTER, x);
+        double r0 = domain->calcDistance(x, c0);
+        double r1 = domain->calcDistance(x, c1);
+        if (r0 < r) {
+            (*q1)(timeIdx, i) = g+c*hmax*0.5*(1+cos(M_PI*r0/r));
+        } else if (r1 < r) {
+            (*q1)(timeIdx, i) = g+c*hmax*0.5*(1+cos(M_PI*r1/r));
+        } else {
+            (*q1)(timeIdx, i) = g;
         }
     }
+    // -------------------------------------------------------------------------
+    // tracer correlated to cosine hills tracer
+    q.push_back(new LADY_SCALAR_FIELD); q2 = q.back();
+    q2->create("", "", "", *mesh, CENTER);
+    a = -0.8, b = 0.9;
+    for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+        (*q2)(timeIdx, i) = a*pow((*q1)(timeIdx, i), 2)+b;
+    }
+    // -------------------------------------------------------------------------
+    // slotted cylinders tracer
+    q.push_back(new LADY_SCALAR_FIELD); q3 = q.back();
+    q3->create("", "", "", *mesh, CENTER);
+    b = 0.1, c = 1.0, r = 0.5;
+    for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+        mesh->getGridCoord(i, CENTER, x);
+        double r0 = domain->calcDistance(x, c0);
+        double r1 = domain->calcDistance(x, c1);
+        if ((r0 <= r && fabs(x(0)-c0(0)) >= r/6.0) ||
+            (r1 <= r && fabs(x(0)-c1(0)) >= r/6.0))
+            (*q3)(timeIdx, i) = c;
+        else if (r0 <= r && fabs(x(0)-c0(0)) < r/6.0 &&
+                 x(1)-c0(1) < -5.0/12.0*r)
+            (*q3)(timeIdx, i) = c;
+        else if (r1 <= r && fabs(x(0)-c1(0)) < r/6.0 &&
+                 x(1)-c1(1) > 5.0/12.0*r)
+            (*q3)(timeIdx, i) = c;
+        else
+            (*q3)(timeIdx, i) = b;
+    }
+    // -------------------------------------------------------------------------
+    // Gaussian hills tracer
+    q.push_back(new LADY_SCALAR_FIELD); q4 = q.back();
+    q4->create("", "", "", *mesh, CENTER);
+    hmax = 0.95, b = 5.0;
+    for (int i = 0; i < mesh->getTotalNumGrid(CENTER); ++i) {
+        mesh->getGridCoord(i, CENTER, x);
+        x.transformToCart(*domain);
+        vec d0 = x.getCartCoord()-c0.getCartCoord();
+        vec d1 = x.getCartCoord()-c1.getCartCoord();
+        (*q4)(timeIdx, i) = hmax*(exp(-b*dot(d0, d0))+exp(-b*dot(d1, d1)));
+    }
+    // -------------------------------------------------------------------------
     AdvectionTestCase::calcInitCond(advectionManager);
 }
 

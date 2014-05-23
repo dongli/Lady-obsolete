@@ -114,7 +114,9 @@ void TracerManager::init(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
         h(0) = dlon*domain.getRadius()*x0.getCosLat();
         h(1) = dlat*domain.getRadius();
         // When h is small, there may be small spots on the grid densities.
-        h *= 2;
+        // The selection of h can be tricky. When h *= 1.5, the errors of solid
+        // rotation test is oscillatory with time.
+        h *= 1.5;
 #else
         REPORT_ERROR("Under construction!");
 #endif
@@ -172,7 +174,8 @@ void TracerManager::output(const string &fileName,
     int hDimIds[3], hVarId;
     int rhoDimIds[2], rhoVarId;
     int sDimIds[3], s1VarId;
-#ifndef NDEBUG
+#define OUTPUT_TRACER_SHAPE
+#ifdef OUTPUT_TRACER_SHAPE
     int numSkel2DimId, s2VarId, numSkel2 = 40;
 #endif
     char str[100];
@@ -196,7 +199,7 @@ void TracerManager::output(const string &fileName,
             != NC_NOERR) {
             REPORT_ERROR("Failed to define dimension \"num_skel1\"!");
         }
-#ifndef NDEBUG
+#ifdef OUTPUT_TRACER_SHAPE
         if (nc_def_dim(ncId, "num_skel2", numSkel2, &numSkel2DimId)
              != NC_NOERR) {
             REPORT_ERROR("Failed to define dimension \"num_skel2\"!");
@@ -278,7 +281,7 @@ void TracerManager::output(const string &fileName,
             != NC_NOERR) {
             REPORT_ERROR("Failed to put attribute in \"" << fileName << "\"!");
         }
-#ifndef NDEBUG
+#ifdef OUTPUT_TRACER_SHAPE
         sDimIds[1] = numSkel2DimId;
         if (nc_def_var(ncId, "s2", NC_DOUBLE, 3, sDimIds, &s2VarId)
             != NC_NOERR) {
@@ -360,7 +363,7 @@ void TracerManager::output(const string &fileName,
             REPORT_ERROR("Failed to put variable in \"" << fileName << "\"!");
         }
         delete [] doubleData;
-#ifndef NDEBUG
+#ifdef OUTPUT_TRACER_SHAPE
         double dtheta = PI2/numSkel2;
         LADY_BODY_COORD y(2);
         LADY_SPACE_COORD x(2);

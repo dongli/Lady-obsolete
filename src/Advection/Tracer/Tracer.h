@@ -18,9 +18,10 @@ public:
     enum BadDeformMatrixType {
         GOOD_SHAPE, EXTREME_FILAMENTATION, NOT_RESOLVED
     };
+    int fatherID;
 protected:
-    vector<double> density; //>! species density array
-    vector<double> mass;    //>! species mass array
+    vec density; //>! species density array
+    vec mass;    //>! species mass array
     TracerSkeleton *skeleton;
     BadDeformMatrixType badType;
     /**
@@ -37,7 +38,22 @@ public:
     /**
      *  Add a species.
      */
-    void addSpecies() { density.push_back(0); mass.push_back(0); }
+    void addSpecies() {
+        density.resize(density.size()+1);
+        density[density.size()-1] = 0;
+        mass.resize(mass.size()+1);
+        mass[mass.size()-1] = 0;
+    }
+
+    /**
+     *  Calculate species density from mass.
+     *
+     *  @param timeIdx the time level index.
+     *  @param s       the species index.
+     */
+    void calcSpeciesDensity(const TimeLevelIndex<2> &timeIdx, int s) {
+        density[s] = mass[s]/detH.getLevel(timeIdx);
+    }
 
     double& getSpeciesDensity(int speciesIdx) {
 #ifndef NDEBUG
@@ -58,9 +74,15 @@ public:
 #endif
         return density[speciesIdx];
     }
-    
-    void calcSpeciesMass(const TimeLevelIndex<2> &timeIdx, int speciesIdx) {
-        mass[speciesIdx] = density[speciesIdx]*detH.getLevel(timeIdx);
+
+    /**
+     *  Calculate species mass from density.
+     *
+     *  @param timeIdx the time level index.
+     *  @param s       the species index.
+     */
+    void calcSpeciesMass(const TimeLevelIndex<2> &timeIdx, int s) {
+        mass[s] = density[s]*detH.getLevel(timeIdx);
     }
 
     double& getSpeciesMass(int speciesIdx) {
@@ -120,11 +142,27 @@ public:
      *  @return The connected mesh cell list.
      */
     vector<TracerMeshCell*>& getConnectedCells() { return connectedCells; }
-    
+
+    /**
+     *  Get the number of connected cells. It should be used instead of the size
+     *  method of the connected cell array.
+     *
+     *  @return The connected cell number.
+     */
     int getNumConnectedCell() const { return numConnectedCell; }
 
+    /**
+     *  Set the host cell where the tracer is.
+     *
+     *  @param cell the host cell.
+     */
     void setHostCell(TracerMeshCell *cell) { hostCell = cell; }
-    
+
+    /**
+     *  Get the host cell where the tracer is.
+     *
+     *  @return The host cell.
+     */
     TracerMeshCell* getHostCell() const { return hostCell; }
 
     /**
@@ -162,10 +200,26 @@ public:
     void resetSkeleton(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
                        const TimeLevelIndex<2> &timeIdx);
 
-#ifndef NDEBUG
-    void outputNeighbors(const TimeLevelIndex<2> &timeIdx,
-                         const LADY_DOMAIN &domain);
-#endif
+    /**
+     *  Dump the centroid, shape, neighbor cells and neighbor tracers into file
+     *  using by external NCL script.
+     *
+     *  @param timeIdx the time level index.
+     *  @param domain  the spatial domain.
+     *  @param file    the text file in class std::ofstream.
+     *  @param idx     the index to distinguish tracer in the file.
+     */
+    void dump(const TimeLevelIndex<2> &timeIdx, const LADY_DOMAIN &domain,
+              std::ofstream &file, int idx);
+
+    /**
+     *  Dump the centroid, shape, neighbor cells and neighbor tracers into file
+     *  using by external NCL script.
+     *
+     *  @param timeIdx the time level index.
+     *  @param domain  the spatial domain.
+     */
+    void dump(const TimeLevelIndex<2> &timeIdx, const LADY_DOMAIN &domain);
 };
 
 }

@@ -10,15 +10,11 @@ public:
     enum SubCase {
         CASE1, CASE2, CASE3, CASE4
     };
-    enum InitCond {
-        COSINE_HILLS, GAUSSIAN_HILLS, SLOTTED_CYLINDERS
-    };
 protected:
     double period;
     SubCase subCase;
-    InitCond initCond;
 public:
-    DeformationTestCase(SubCase subCase, InitCond initCond);
+    DeformationTestCase(SubCase subCase);
     ~DeformationTestCase();
 
     virtual void init(const geomtk::TimeManager &timeManager);

@@ -4,8 +4,9 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 
 begin
 
-    test_case = "rotation"
-    resolution = "240x120"
+    test_case = "deform"
+    ic = ".sc"
+    resolution = "240x120.split100"
     time_stamp = "%4.4d"
     run_type = "Release"
     start_time = 0
@@ -20,27 +21,42 @@ begin
 
     num_time = dimsizes(fs)
 
-    wks = gsn_open_wks("pdf", file_prefix+".cells")
+    wks = gsn_open_wks("pdf", file_prefix+ic+".cells")
 
-    if (isStrSubset(test_case, "rotation") .or. \
-        isStrSubset(test_case, "deform.gh")) then
+    if (isStrSubset(test_case, "rotation") .or. \\
+        isStrSubset(test_case, "barotropic")) then
         gsn_define_colormap(wks, "WhBlGrYeRe")
     end if
-    if (isStrSubset(test_case, "deform.sc") .or. \
-        isStrSubset(test_case, "deform.ch")) then
-        cmap = (/(/1.0, 1.0, 1.0 /),(/0.0, 0.0, 0.0 /), \
-                 (/0.84,0.84,1.0 /),(/0.38,0.4, 0.98/), \
-                 (/0.04,0.15,0.89/),(/0.06,0.4, 0.46/), \
-                 (/0.15,0.71,0.14/),(/0.54,0.85,0.17/), \
-                 (/0.98,0.98,0.22/),(/0.99,0.53,0.14/), \
-                 (/0.99,0.09,0.11/)/)
-        gsn_define_colormap(wks, cmap)
-        ; gsn_define_colormap(wks, "WhBlGrYeRe")
+    if (isStrSubset(test_case, "deform")) then
+        if (ic .eq. ".ch") then
+            cmap = (/(/1.0, 1.0, 1.0 /),(/0.0, 0.0, 0.0 /), \
+                     (/0.84,0.84,1.0 /),(/0.38,0.4, 0.98/), \
+                     (/0.04,0.15,0.89/),(/0.06,0.4, 0.46/), \
+                     (/0.15,0.71,0.14/),(/0.54,0.85,0.17/), \
+                     (/0.98,0.98,0.22/),(/0.99,0.53,0.14/), \
+                     (/0.99,0.09,0.11/)/)
+            gsn_define_colormap(wks, cmap)
+            ; gsn_define_colormap(wks, "WhBlGrYeRe")
+        end if
+        if (ic .eq. ".sc") then
+            cmap = (/(/1.0, 1.0, 1.0 /),(/0.0, 0.0, 0.0 /), \
+                     (/0.84,0.84,1.0 /),(/0.38,0.4, 0.98/), \
+                     (/0.04,0.15,0.89/),(/0.06,0.4, 0.46/), \
+                     (/0.15,0.71,0.14/),(/0.54,0.85,0.17/), \
+                     (/0.98,0.98,0.22/),(/0.99,0.53,0.14/), \
+                     (/0.99,0.09,0.11/)/)
+            gsn_define_colormap(wks, cmap)
+            ; gsn_define_colormap(wks, "WhBlGrYeRe")
+        end if
+        if (ic .eq. ".gh") then
+            gsn_define_colormap(wks, "WhBlGrYeRe")
+        end if
     end if
 
     res = True
     res@cnLinesOn = False
     res@cnFillOn = True
+    ; res@cnFillMode = "RasterFill"
     res@gsnSpreadColors = True
     res@cnLevelSelectionMode = "ManualLevels"
     if (test_case .eq. "barotropic") then
@@ -53,22 +69,28 @@ begin
         res@cnMaxLevelValF = 1000.0
         res@cnLevelSpacingF = 50.0
     end if
-    if (isStrSubset(test_case, "deform.sc") .or. \
-        isStrSubset(test_case, "deform.ch")) then
-        res@cnMinLevelValF = 0.2
-        res@cnMaxLevelValF = 0.9
-        res@cnLevelSpacingF = 0.1
-        ; res@cnMinLevelValF = 0.0
-        ; res@cnMaxLevelValF = 1.1
-        ; res@cnLevelSpacingF = 0.05
-    end if
-    if (isStrSubset(test_case, "deform.gh")) then
-        ; res@cnMinLevelValF = 0.9
-        ; res@cnMaxLevelValF = 1.1
-        ; res@cnLevelSpacingF = 0.01
-        res@cnMinLevelValF = 0.0
-        res@cnMaxLevelValF = 1.0
-        res@cnLevelSpacingF = 0.1
+    if (isStrSubset(test_case, "deform")) then
+        if (ic .eq. ".ch") then
+            ; res@cnMinLevelValF = 0.0
+            ; res@cnMaxLevelValF = 1.0
+            ; res@cnLevelSpacingF = 0.1
+            res@cnMinLevelValF = 0.2
+            res@cnMaxLevelValF = 0.9
+            res@cnLevelSpacingF = 0.1
+        end if
+        if (ic .eq. ".sc") then
+            res@cnMinLevelValF = 0.2
+            res@cnMaxLevelValF = 0.9
+            res@cnLevelSpacingF = 0.1
+            ; res@cnMinLevelValF = 0.0
+            ; res@cnMaxLevelValF = 1.1
+            ; res@cnLevelSpacingF = 0.1
+        end if
+        if (ic .eq. ".gh") then
+            res@cnMinLevelValF = 0.0
+            res@cnMaxLevelValF = 1.0
+            res@cnLevelSpacingF = 0.1
+        end if
     end if
     ; res@gsnPolar = "NH"
     ; res@mpMinLatF = 60
@@ -83,14 +105,28 @@ begin
         system("echo file: "+fs(l))
         f = addfile(fs(l), "r")
         num_lat = dimsizes(f->lat)
-        q = f->q1/f->q0
+        if (isStrSubset(test_case, "barotropic")) then
+            q = f->q1
+        end if
+        if (isStrSubset(test_case, "rotation")) then
+            q = f->q1/f->q0
+        end if
+        if (isStrSubset(test_case, "deform")) then
+            if (ic .eq. ".ch") then
+                q = f->q1/f->q0
+            end if
+            if (ic .eq. ".sc") then
+                q = f->q3/f->q0
+            end if
+            if (ic .eq. ".gh") then
+                q = f->q4/f->q0
+            end if
+        end if
         copy_VarCoords(f->q0, q)
         res@gsnLeftString = ""
         res@gsnRightString = "Min:"+sprintf("%8.5f", min(q))+" "+ \
                              "Max:"+sprintf("%8.5f", max(q))
-        if (isStrSubset(test_case, "deform") .or. isStrSubset(test_case, "rotation")) then
-            plot = gsn_csm_contour_map(wks, q, res)
-        end if
+        plot = gsn_csm_contour_map(wks, q, res)
     end do
 
 end

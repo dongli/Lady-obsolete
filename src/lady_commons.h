@@ -61,6 +61,7 @@ typedef mlpack::range::RangeSearch<Metric, Tree> Searcher;
 #define LADY_MESH_INDEX geomtk::RLLMeshIndex
 #define LADY_FIELD geomtk::RLLField
 #define LADY_SCALAR_FIELD geomtk::NumericRLLField<double, 2>
+#define LADY_STATIC_SCALAR_FIELD geomtk::NumericRLLField<double, 1>
 #define LADY_VELOCITY_FIELD geomtk::RLLVelocityField
 #define LADY_REGRID geomtk::RLLRegrid
 

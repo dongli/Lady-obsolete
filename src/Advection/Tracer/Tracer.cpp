@@ -8,6 +8,7 @@ Tracer::Tracer(int numDim) : Parcel(numDim) {
     skeleton = new TracerSkeleton(this, numDim);
     badType = GOOD_SHAPE;
     numConnectedCell = 0;
+    fatherID = -999;
 }
 
 Tracer::~Tracer() {
@@ -81,7 +82,7 @@ void Tracer::updateDeformMatrix(const LADY_DOMAIN &domain,
                 double tmp = sqrt(volume/(S[0]*S[1]));
                 S[0] *= tmp; S[1] *= tmp;
                 H0 = U*diagmat(S)*V.t();
-//                resetSkeleton(domain, mesh, timeIdx);
+                resetSkeleton(domain, mesh, timeIdx);
             }
         }
         detH.getLevel(timeIdx) = arma::prod(S);
@@ -147,10 +148,84 @@ void Tracer::resetSkeleton(const LADY_DOMAIN &domain, const LADY_MESH &mesh,
     }
 }
 
-#ifndef NDEBUG
-void Tracer::outputNeighbors(const TimeLevelIndex<2> &timeIdx,
-                             const LADY_DOMAIN &domain) {
-    std::ofstream file; file.open("neighbors.txt");
+void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const LADY_DOMAIN &domain,
+                  std::ofstream &file, int idx) {
+    // -------------------------------------------------------------------------
+    // tracer centroid
+    file << "centroid" << idx << " = (/" << getX(timeIdx)(0)/RAD << "," <<
+        getX(timeIdx)(1)/RAD << "/)" << endl;
+    // -------------------------------------------------------------------------
+    // tracer shape
+    int n = 100;
+    file << "shape" << idx << " = new((/" << n << ",2/), double)" << endl;
+    double dtheta = PI2/(n-1);
+    LADY_BODY_COORD y(2);
+    LADY_SPACE_COORD x(2);
+    vector<vec::fixed<2> > shape(n);
+    for (int i = 0; i < shape.size(); ++i) {
+        double theta = i*dtheta;
+        y(0) = cos(theta);
+        y(1) = sin(theta);
+        getSpaceCoord(domain, timeIdx, y, x);
+        shape[i] = x()/RAD;
+    }
+    for (int m = 0; m < 2; ++m) {
+        file << "shape" << idx << "(:," << m << ") = (/";
+        for (int i = 0; i < shape.size(); ++i) {
+            if (i != shape.size()-1) {
+                file << shape[i][m] << ",";
+            } else {
+                file << shape[i][m] << "/)" << endl;
+            }
+        }
+    }
+    // -------------------------------------------------------------------------
+    // connected cells
+    if (numConnectedCell != 0) {
+        file << "ngb_cells" << idx << " = new((/" << numConnectedCell
+            << ",2/), double)" << endl;
+        for (int m = 0; m < 2; ++m) {
+            file << "ngb_cells" << idx << "(:," << m << ") = (/";
+            for (int i = 0; i < numConnectedCell; ++i) {
+                TracerMeshCell *cell = connectedCells[i];
+                if (i != numConnectedCell-1) {
+                    file << cell->getCoord()(m) << ",";
+                } else {
+                    file << cell->getCoord()(m) << "/)" << endl;
+                }
+            }
+        }
+    }
+    // -------------------------------------------------------------------------
+    // neighbor tracer locations
+    int numNeighborTracer = 0;
+    for (int i = 0; i < numConnectedCell; ++i) {
+        numNeighborTracer += connectedCells[i]->getNumContainedTracer();
+    }
+    if (numNeighborTracer != 0) {
+        file << "ngb_tracers" << idx << " = new((/" << numNeighborTracer <<
+            ",2/), double)" << endl;
+        for (int m = 0; m < 2; ++m) {
+            file << "ngb_tracers" << idx << "(:," << m << ") = (/";
+            int k = 0;
+            for (int i = 0; i < numConnectedCell; ++i) {
+                TracerMeshCell *cell = connectedCells[i];
+                vector<Tracer*> &tracers = cell->getContainedTracers();
+                for (int j = 0; j < cell->getNumContainedTracer(); ++j) {
+                    if (k != numNeighborTracer-1) {
+                        file << tracers[j]->getX(timeIdx)(m) << ",";
+                    } else {
+                        file << tracers[j]->getX(timeIdx)(m) << "/)" << endl;
+                    }
+                    k++;
+                }
+            }
+        }
+    }
+}
+
+void Tracer::dump(const TimeLevelIndex<2> &timeIdx, const LADY_DOMAIN &domain) {
+    std::ofstream file; file.open("tracer_dump.txt");
     // -------------------------------------------------------------------------
     // centroid location
     file << "centroid = (/" << getX(timeIdx)(0) << "," << getX(timeIdx)(1) << "/)" << endl;
@@ -222,6 +297,5 @@ void Tracer::outputNeighbors(const TimeLevelIndex<2> &timeIdx,
     }
     file.close();
 }
-#endif
 
 }
