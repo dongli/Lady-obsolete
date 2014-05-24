@@ -11,6 +11,7 @@ protected:
     LADY_DOMAIN *domain;
     LADY_MESH *mesh;
     const geomtk::TimeManager *timeManager;
+    string subcase;
     LADY_VELOCITY_FIELD velocity;
     vector<LADY_SCALAR_FIELD*> q;
 public:
@@ -52,6 +53,13 @@ public:
      *  @return The step size in seconds.
      */
     virtual double getStepSize() const = 0;
+
+    /**
+     *  Select the subcase to run.
+     *
+     *  @param subcaseName the name of the subcase.
+     */
+    virtual void selectSubcase(const string &subcaseName);
 
     /**
      *  Calculate initial condition and set tracers. This base function just

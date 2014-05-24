@@ -2,8 +2,8 @@
 
 namespace lady {
 
-DeformationTestCase::DeformationTestCase(SubCase subCase) {
-    this->subCase = subCase;
+DeformationTestCase::DeformationTestCase() {
+    subcase = "case4";
     period = 5.0;
     REPORT_ONLINE;
 }
@@ -48,7 +48,7 @@ void DeformationTestCase::advance(double time,
     double cosT = cos(M_PI*time/period);
     double k, R = domain->getRadius();
     // advance velocity
-    if (subCase == CASE1) {
+    if (subcase == "case1") {
         k = 2.4;
         for (int j = 0; j < mesh->getNumGrid(1, velocity(0).getGridType(1)); ++j) {
             for (int i = 0; i < mesh->getNumGrid(0, velocity(0).getGridType(0)); ++i) {
@@ -64,7 +64,7 @@ void DeformationTestCase::advance(double time,
                 velocity(1)(timeIdx, i, j) = k*0.5*sin(lon)*cos(lat)*cosT;
             }
         }
-    } else if (subCase == CASE2) {
+    } else if (subcase == "case2") {
         k = 2.0;
         for (int j = 0; j < mesh->getNumGrid(1, velocity(0).getGridType(1)); ++j) {
             for (int i = 0; i < mesh->getNumGrid(0, velocity(0).getGridType(0)); ++i) {
@@ -80,7 +80,7 @@ void DeformationTestCase::advance(double time,
                 velocity(1)(timeIdx, i, j) = k*sin(lon*2.0)*cos(lat)*cosT;
             }
         }
-    } else if (subCase == CASE3) {
+    } else if (subcase == "case3") {
         k = 5.0*R/period;
         for (int j = 0; j < mesh->getNumGrid(1, velocity(0).getGridType(1)); ++j) {
             for (int i = 0; i < mesh->getNumGrid(0, velocity(0).getGridType(0)); ++i) {
@@ -97,7 +97,7 @@ void DeformationTestCase::advance(double time,
                 velocity(1)(timeIdx, i, j) = k*0.5*sin(lon)*pow(cos(lat), 3.0)*cosT;
             }
         }
-    } else if (subCase == CASE4) {
+    } else if (subcase == "case4") {
         k = 10.0*R/period;
         double c1 = PI2*time/period;
         double c2 = PI2*R/period;

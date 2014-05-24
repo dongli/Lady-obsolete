@@ -6,15 +6,10 @@
 namespace lady {
 
 class DeformationTestCase : public AdvectionTestCase {
-public:
-    enum SubCase {
-        CASE1, CASE2, CASE3, CASE4
-    };
 protected:
     double period;
-    SubCase subCase;
 public:
-    DeformationTestCase(SubCase subCase);
+    DeformationTestCase();
     ~DeformationTestCase();
 
     virtual void init(const geomtk::TimeManager &timeManager);

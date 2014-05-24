@@ -19,6 +19,10 @@ void AdvectionTestCase::outputVelocity(const string &fileName,
                                        const TimeLevelIndex<2> &oldTimeIdx) const {
 }
 
+void AdvectionTestCase::selectSubcase(const string &subcase) {
+    this->subcase = subcase;
+}
+
 void AdvectionTestCase::calcInitCond(AdvectionManager &advectionManager) {
     assert(q.size() > 0);
     geomtk::StampString name("q", ""), brief("test tracer ", "");
